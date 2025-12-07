@@ -1,0 +1,12 @@
+*.exe
+*.o
+*.obj
+*.dll
+
+.vscode/
+
+*.log
+*.tmp
+*.txt
+
+Test.cpp
