@@ -47,7 +47,7 @@ enum TokenType {
 
     // Keywords: DDL & definitions
     T_CREATE, T_DATABASE, T_TABLE, T_INDEX, T_VIEW, T_PROCEDURE,
-    T_DROP, T_ALTER, T_ADD, T_COLUMN, T_CONSTRAINT, T_BACKUP,
+    T_DROP, T_ALTER, T_COLUMN, T_CONSTRAINT, T_BACKUP,
     T_PK, T_FK, T_REFERENCES, T_AUTOINCREMENT, T_UNIQUE, T_CHECK, T_DEFAULT,
 
     // Keywords: Functions & Window
@@ -106,6 +106,7 @@ struct ParseNode {
 
 class SQLGuard {
 public:
+    SQLGuard();
     void analyze(string query);
     void debugLexer(string query);
 
