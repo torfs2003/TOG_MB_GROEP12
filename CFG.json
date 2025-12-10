@@ -3,13 +3,14 @@
     "script", "statement_list", "statement", "opt_with_clause", "cte_list", 
     "cte_element", "opt_column_names", "column_name_list", "main_statement", 
     "C", "E", "C_Expression", "C_Term", "C_Factor", "C_Relational", 
-    "E_Add", "E_Mult", "E_Unary", "E_Primary", "B", "bit_op", "quantifier", 
+    "E_Bitwise", "E_Add", "E_Mult", "E_Unary", "E_Primary", 
+    "B", "bit_op", "quantifier", 
     "function_call", "star_or_e", "opt_args", "value_list", "agg_func", 
     "window_function", "window_spec", "opt_partition", "opt_order_clause", 
     "cast_expression", "case_expression", "case_when_list", "opt_else", 
     "select_statement", "select_query", "opt_from_block", "clauses", 
-    "opt_where", "opt_group", "opt_having", "opt_order", "compound_list", 
-    "compound_op", "opt_top", "opt_distinct", "opt_into", "column_list", 
+    "opt_where", "opt_group", "opt_having", "opt_order", 
+    "opt_top", "opt_distinct", "opt_into", "column_list", 
     "col_item", "table_ref_list", "table_ref", "table_factor", "opt_alias", 
     "join_list", "join_part", "join_type", "join_condition", "order_list", 
     "order_item", "opt_dir", "insert_statement", "insert_source", 
@@ -86,15 +87,18 @@
     {"head": "C_Factor", "body": ["T_NOT", "C_Relational"]},
     {"head": "C_Factor", "body": ["C_Relational"]},
 
-    {"head": "C_Relational", "body": ["E_Add", "B", "E_Add"]},
-    {"head": "C_Relational", "body": ["E_Add", "T_IS", "T_NULL"]},
-    {"head": "C_Relational", "body": ["E_Add", "T_IS", "T_NOT", "T_NULL"]},
-    {"head": "C_Relational", "body": ["E_Add", "T_BETWEEN", "E_Add", "T_AND", "E_Add"]},
-    {"head": "C_Relational", "body": ["E_Add", "T_IN", "T_LPAREN", "value_list", "T_RPAREN"]},
-    {"head": "C_Relational", "body": ["E_Add", "T_IN", "T_LPAREN", "select_statement", "T_RPAREN"]},
-    {"head": "C_Relational", "body": ["T_EXISTS", "T_LPAREN", "select_statement", "T_RPAREN"]},
-    {"head": "C_Relational", "body": ["E_Add", "B", "quantifier", "T_LPAREN", "select_statement", "T_RPAREN"]},
-    {"head": "C_Relational", "body": ["E_Add"]},
+    {"head": "C_Relational", "body": ["E_Bitwise", "B", "E_Bitwise"]},
+    {"head": "C_Relational", "body": ["E_Bitwise", "T_IS", "T_NULL"]},
+    {"head": "C_Relational", "body": ["E_Bitwise", "T_IS", "T_NOT", "T_NULL"]},
+    {"head": "C_Relational", "body": ["E_Bitwise", "T_BETWEEN", "E_Bitwise", "T_AND", "E_Bitwise"]},
+    {"head": "C_Relational", "body": ["E_Bitwise", "T_IN", "T_LPAREN", "value_list", "T_RPAREN"]},
+    {"head": "C_Relational", "body": ["E_Bitwise", "T_IN", "T_LPAREN", "select_statement", "T_RPAREN"]},
+    {"head": "C_Relational", "body": ["T_EXISTS", "T_LPAREN", "select_statement", "T_RPAREN"]}, 
+    {"head": "C_Relational", "body": ["E_Bitwise", "B", "quantifier", "T_LPAREN", "select_statement", "T_RPAREN"]},
+    {"head": "C_Relational", "body": ["E_Bitwise"]},
+
+    {"head": "E_Bitwise", "body": ["E_Bitwise", "bit_op", "E_Add"]},
+    {"head": "E_Bitwise", "body": ["E_Add"]},
 
     {"head": "E_Add", "body": ["E_Add", "T_ADD", "E_Mult"]},
     {"head": "E_Add", "body": ["E_Add", "T_MINUS", "E_Mult"]},
@@ -103,7 +107,6 @@
     {"head": "E_Mult", "body": ["E_Mult", "T_STAR", "E_Unary"]},
     {"head": "E_Mult", "body": ["E_Mult", "T_DIVIDE", "E_Unary"]},
     {"head": "E_Mult", "body": ["E_Mult", "T_PERCENT", "E_Unary"]},
-    {"head": "E_Mult", "body": ["E_Mult", "bit_op", "E_Unary"]},
     {"head": "E_Mult", "body": ["E_Unary"]},
 
     {"head": "E_Unary", "body": ["T_MINUS", "E_Unary"]},
@@ -111,8 +114,6 @@
 
     {"head": "E_Primary", "body": ["T_ID"]},
     {"head": "E_Primary", "body": ["T_ID", "T_DOT", "T_ID"]},
-    {"head": "E_Primary", "body": ["T_ID", "T_DOT", "T_STAR"]},
-    {"head": "E_Primary", "body": ["T_STAR"]},
     {"head": "E_Primary", "body": ["T_INT"]},
     {"head": "E_Primary", "body": ["T_FLOAT"]},
     {"head": "E_Primary", "body": ["T_STRING"]},
@@ -189,13 +190,17 @@
     {"head": "opt_else", "body": ["T_ELSE", "C_Expression"]},
     {"head": "opt_else", "body": []},
 
-    {"head": "select_statement", "body": ["select_query", "compound_list"]},
+    {"head": "select_statement", "body": ["select_query"]},
+    {"head": "select_statement", "body": ["select_statement", "T_UNION", "select_query"]},
+    {"head": "select_statement", "body": ["select_statement", "T_UNIONALL", "select_query"]},
+    {"head": "select_statement", "body": ["select_statement", "T_INTERSECT", "select_query"]},
+    {"head": "select_statement", "body": ["select_statement", "T_EXCEPT", "select_query"]},
+    {"head": "select_statement", "body": ["select_statement", "T_MINUS", "select_query"]},
 
     {"head": "select_query", "body": ["T_SELECT", "opt_top", "opt_distinct", "column_list", "opt_into", "opt_from_block"]},
 
     {"head": "opt_from_block", "body": ["T_FROM", "table_ref_list", "clauses"]},
     {"head": "opt_from_block", "body": ["clauses"]},
-    {"head": "opt_from_block", "body": []},
 
     {"head": "clauses", "body": ["opt_where", "opt_group", "opt_having", "opt_order"]},
 
@@ -210,15 +215,6 @@
 
     {"head": "opt_order", "body": ["T_ORDER", "T_BY", "order_list"]},
     {"head": "opt_order", "body": []},
-
-    {"head": "compound_list", "body": ["compound_op", "select_query", "compound_list"]},
-    {"head": "compound_list", "body": []},
-
-    {"head": "compound_op", "body": ["T_UNION"]},
-    {"head": "compound_op", "body": ["T_UNIONALL"]},
-    {"head": "compound_op", "body": ["T_INTERSECT"]},
-    {"head": "compound_op", "body": ["T_EXCEPT"]},
-    {"head": "compound_op", "body": ["T_MINUS"]},
 
     {"head": "opt_top", "body": ["T_TOP", "T_INT"]},
     {"head": "opt_top", "body": []},
@@ -315,7 +311,7 @@
     {"head": "alter_action", "body": ["T_DROP", "T_COLUMN", "T_ID"]},
     {"head": "alter_action", "body": ["T_ALTER", "T_COLUMN", "T_ID", "data_type"]},
     {"head": "alter_action", "body": ["T_ADD", "T_CONSTRAINT", "T_ID", "table_constraint"]},
-
+    {"head": "alter_action", "body": ["T_DROP", "T_CONSTRAINT", "T_ID"]},
     {"head": "backup_statement", "body": ["T_BACKUP", "T_DATABASE", "T_ID"]},
 
     {"head": "def_list", "body": ["col_def"]},

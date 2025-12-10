@@ -8,5 +8,16 @@
 *.log
 *.tmp
 *.txt
+*.output
+*.y
 
+*.c
 Test.cpp
+/data
+*.py
+DDL.json
+DML.json
+main.json
+*.svg
+*.tab.h
+
