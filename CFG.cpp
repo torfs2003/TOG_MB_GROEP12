@@ -7,12 +7,10 @@ CFG::CFG(const std::string &filename) {
     std::ifstream input(filename);
     json j;
     input >> j;
-    for (const auto& variable : j["Variables"]) {
-        variables.insert(variable);
-    }
-    for (const auto& Terminal : j["Terminals"]) {
-        terminals.insert(Terminal);
-    }
+
+    variables = j["Variables"].get<std::set<std::string>>();
+    terminals = j["Terminals"].get<std::set<std::string>>();
+
     Start = j["Start"];
     for (auto& production : j["Productions"]) {
         productions.emplace(production["head"], production["body"]);

@@ -21,3 +21,4 @@ main.json
 *.svg
 *.tab.h
 
+.idea

@@ -1,4 +1,6 @@
 
+#include <sstream>
+
 #include "CFG.h"
 
 using namespace std;
