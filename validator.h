@@ -49,8 +49,9 @@ class LALRParser {
     unordered_map<int, unordered_map<string, int>> gotoTable;
 
 public:
-    LALRParser(string filename);          
+    LALRParser(string filename);     
     bool parse(vector<Token>& tokens);    
 };
+void printErrors(SimpleLexer& lexer, LALRParser& parser, const vector<string>& queries);
 
 #endif

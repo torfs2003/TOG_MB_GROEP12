@@ -4,6 +4,7 @@
 #include <sstream>
 #include <cctype>
 #include <algorithm>
+#include <iomanip>
 
 using namespace std;
 
@@ -39,6 +40,10 @@ SimpleLexer::SimpleLexer() {
     keywords["DECIMAL"] = "T_DECIMAL";
     keywords["DEFAULT"] = "T_DEFAULT";
     keywords["DELETE"] = "T_DELETE";
+    keywords["CASCADE"]  = "T_CASCADE";
+    keywords["RESTRICT"] = "T_RESTRICT";
+    keywords["ACTION"]   = "T_ACTION";
+    keywords["NO"]       = "T_NO";
     keywords["DESC"] = "T_DESC";
     keywords["DISTINCT"] = "T_DISTINCT";
     keywords["DROP"] = "T_DROP";
@@ -49,7 +54,6 @@ SimpleLexer::SimpleLexer() {
     keywords["EXISTS"] = "T_EXISTS";
     keywords["FALSE"] = "T_BOOLEAN";
     keywords["FLOAT"] = "T_FLOAT_TYPE";
-    keywords["FOREIGN"] = "T_FK";
     keywords["FROM"] = "T_FROM";
     keywords["FULL"] = "T_FJOIN"; 
     keywords["GROUP"] = "T_GROUP";
@@ -65,7 +69,6 @@ SimpleLexer::SimpleLexer() {
     keywords["IS"] = "T_IS";
     keywords["JOIN"] = "T_JOIN";
     keywords["JSON"] = "T_JSON";
-    keywords["KEY"] = "T_PK"; 
     keywords["LEFT"] = "T_LJOIN"; 
     keywords["LIKE"] = "T_LIKE";
     keywords["MAX"] = "T_MAX";
@@ -81,7 +84,6 @@ SimpleLexer::SimpleLexer() {
     keywords["OVER"] = "T_OVER";
     keywords["PARTITION"] = "T_PARTITION";
     keywords["PERCENT"] = "T_PERCENT"; 
-    keywords["PRIMARY"] = "T_PK"; 
     keywords["PROCEDURE"] = "T_PROCEDURE";
     keywords["RANK"] = "T_RANK";
     keywords["REAL"] = "T_REAL";
@@ -125,7 +127,7 @@ SimpleLexer::SimpleLexer() {
     keywords["OUTER"] = "T_OUTER";
     keywords["IF"] = "T_IF";
     symbols['*'] = "T_STAR";    symbols[','] = "T_COMMA";
-    symbols[';'] = "T_EOF";     symbols['('] = "T_LPAREN";
+    symbols[';'] = "T_PCOMMA";     symbols['('] = "T_LPAREN";
     symbols[')'] = "T_RPAREN";  symbols['='] = "T_EQ";
     symbols['+'] = "T_ADD";     symbols['.'] = "T_DOT";
     symbols['>'] = "T_GT";      symbols['<'] = "T_LT";
@@ -140,11 +142,26 @@ vector<Token> SimpleLexer::tokenize(string input) {
     while (i < input.length()) {
         char c = input[i];
 
+        // 1. Skip Whitespace
         if (isspace(c)) {
             i++;
             continue;
         }
 
+        // ==========================================
+        // FIX 1: HEXADECIMAL SUPPORT (For Query 1)
+        // ==========================================
+        if (c == '0' && i + 1 < input.length() && (input[i+1] == 'x' || input[i+1] == 'X')) {
+            string hexStr = "0x";
+            i += 2; // Skip '0x'
+            while (i < input.length() && isxdigit(input[i])) {
+                hexStr += input[i++];
+            }
+            tokens.push_back({"T_INT", hexStr}); // Treat Hex as INT
+            continue;
+        }
+
+        // 2. Standard Numbers
         if (isdigit(c)) {
             string num;
             bool isFloat = false;
@@ -156,14 +173,45 @@ vector<Token> SimpleLexer::tokenize(string input) {
             continue;
         }
 
+        // 3. Keywords & Identifiers (with PRIMARY/FOREIGN KEY Lookahead)
         if (isalpha(c) || c == '_') {
             string word;
             while (i < input.length() && (isalnum(input[i]) || input[i] == '_')) {
                 word += input[i++];
             }
+            
             string upper = word;
             transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
 
+            // --- HANDLING COMPOSITE TOKENS (PRIMARY KEY / FOREIGN KEY) ---
+            if (upper == "PRIMARY" || upper == "FOREIGN") {
+                int tempI = i; 
+                // Peek forward past whitespace
+                while (tempI < input.length() && isspace(input[tempI])) tempI++;
+
+                // Read next word
+                if (tempI < input.length() && (isalpha(input[tempI]) || input[tempI] == '_')) {
+                    string nextWord;
+                    while (tempI < input.length() && (isalnum(input[tempI]) || input[tempI] == '_')) {
+                        nextWord += input[tempI++];
+                    }
+                    string nextUpper = nextWord;
+                    transform(nextUpper.begin(), nextUpper.end(), nextUpper.begin(), ::toupper);
+
+                    // If we found "KEY", merge them into one token
+                    if (nextUpper == "KEY") {
+                        i = tempI; // Advance real cursor
+                        if (upper == "PRIMARY") {
+                            tokens.push_back({"T_PK", "PRIMARY KEY"});
+                        } else {
+                            tokens.push_back({"T_FK", "FOREIGN KEY"});
+                        }
+                        continue; // Successfully handled composite token
+                    }
+                }
+            }
+
+            // Standard Map Lookup
             if (keywords.count(upper)) {
                 tokens.push_back({keywords[upper], word});
             } else {
@@ -172,17 +220,33 @@ vector<Token> SimpleLexer::tokenize(string input) {
             continue;
         }
 
+        // ==========================================
+        // FIX 2: ESCAPED STRING SUPPORT (For Query 10)
+        // ==========================================
         if (c == '\'') {
             string s;
-            i++;
-            while (i < input.length() && input[i] != '\'') {
-                s += input[i++];
+            i++; // Skip opening quote
+            while (i < input.length()) {
+                // Check for escaped quote: ''
+                if (input[i] == '\'' && i + 1 < input.length() && input[i+1] == '\'') {
+                    s += "'";  // Add actual single quote
+                    i += 2;    // Skip both quote chars
+                } 
+                // Check for closing quote
+                else if (input[i] == '\'') {
+                    i++; // Skip closing quote
+                    break;
+                } 
+                // Normal character
+                else {
+                    s += input[i++];
+                }
             }
-            i++; 
             tokens.push_back({"T_STRING", s});
             continue;
         }
 
+        // 5. Symbols
         if (symbols.count(c) || c == '!' || c == '<' || c == '>' || c == '|') {
             string op(1, c);
             bool handled = false;
@@ -217,7 +281,8 @@ vector<Token> SimpleLexer::tokenize(string input) {
 
         i++; 
     }
-    
+    tokens.push_back({"T_EOF", ""});
+
     tokens.push_back({"$", ""}); 
     return tokens;
 }
@@ -257,52 +322,129 @@ LALRParser::LALRParser(string filename) {
     }
 }
 
+
 bool LALRParser::parse(vector<Token>& tokens) {
     stack<int> stateStack;
     stateStack.push(0);
 
     int tokenIdx = 0;
-    
-    while (true) {
-        if (stateStack.empty()) return false;
+    bool globalError = false;
+    bool currentQueryError = false;
+    bool recoveryMode = false;
+    int queryCount = 1;
 
+    cout << "Query " << setw(2) << queryCount << ": ";
+
+    while (tokenIdx < tokens.size()) {
         int currentState = stateStack.top();
-        
-        if (tokenIdx >= tokens.size()) return false; 
-        
         Token currentToken = tokens[tokenIdx];
         string sym = currentToken.type;
 
         if (actionTable[currentState].find(sym) == actionTable[currentState].end()) {
-            cerr << "  [Syntax Error] Unexpected token '" << currentToken.value 
-                 << "' (" << sym << ") in State " << currentState << endl;
-            return false;
+            
+            if (currentState == 0 && (sym == "T_EOF" || sym == "$")) {
+                return !globalError; 
+            }
+            if (!recoveryMode) {
+                cout << "\n    --> [Syntax Error] Unexpected '" << currentToken.value 
+                     << "' (" << sym << ") in State " << currentState << endl;
+                
+                currentQueryError = true;
+                globalError = true;
+                recoveryMode = true; 
+            }
+
+            if (sym == "T_PCOMMA") {
+                cout << "    --> [Recovery] Found delimiter ';'. Resuming parse..." << endl;
+                
+                cout << "\n         Result: \033[1;31m[REJECTED]\033[0m" << endl;
+
+                while(!stateStack.empty()) stateStack.pop();
+                stateStack.push(0);
+                
+                tokenIdx++; 
+                recoveryMode = false;
+                currentQueryError = false;
+                queryCount++;
+
+                if (tokenIdx < tokens.size() && tokens[tokenIdx].type != "T_EOF" && tokens[tokenIdx].type != "$") {
+                    cout << "\nQuery " << setw(2) << queryCount << ": ";
+                }
+                continue;
+            } 
+            else if (sym == "T_EOF" || sym == "$") {
+                 cout << "    --> [Recovery] Reached EOF. Stopping." << endl;
+                 cout << "\n         Result: \033[1;31m[REJECTED]\033[0m" << endl;
+                 return false; 
+            }
+            else {
+                tokenIdx++; 
+                continue;
+            }
         }
 
+       
         ParserAction act = actionTable[currentState][sym];
 
         if (act.type == ParserAction::SHIFT) {
             stateStack.push(act.state);
             tokenIdx++;
+
+            if (sym == "T_PCOMMA") {
+                if (!currentQueryError) {
+                    cout << "\n         Result: \033[1;32m[ACCEPTED]\033[0m" << endl;
+                } else {
+                    cout << "\n         Result: \033[1;31m[REJECTED]\033[0m" << endl;
+                }
+
+                while(!stateStack.empty()) stateStack.pop();
+                stateStack.push(0);
+                
+                recoveryMode = false;
+                currentQueryError = false;
+                queryCount++;
+
+                if (tokenIdx < tokens.size() && tokens[tokenIdx].type != "T_EOF" && tokens[tokenIdx].type != "$") {
+                    cout << "\nQuery " << setw(2) << queryCount << ": ";
+                }
+            }
         } 
         else if (act.type == ParserAction::REDUCE) {
             for (int i = 0; i < act.rhsSize; i++) {
                 if (!stateStack.empty()) stateStack.pop();
             }
-            
-            if (stateStack.empty()) return false;
+            if (stateStack.empty()) stateStack.push(0); 
 
             int topState = stateStack.top();
             if (gotoTable[topState].find(act.lhs) == gotoTable[topState].end()) {
-                cerr << "  [GOTO Error] No GOTO for " << act.lhs << " in State " << topState << endl;
-                return false;
+                return false; 
             }
-            
-            int nextState = gotoTable[topState][act.lhs];
-            stateStack.push(nextState);
+            stateStack.push(gotoTable[topState][act.lhs]);
         } 
         else if (act.type == ParserAction::ACCEPT) {
-            return true;
+            if (!currentQueryError) cout << "\n         Result: \033[1;32m[ACCEPTED]\033[0m" << endl;
+            else cout << "\n         Result: \033[1;31m[REJECTED]\033[0m" << endl;
+            return !globalError;
         }
     }
+    return !globalError;
 }
+
+void printErrors(SimpleLexer& lexer, LALRParser& parser, const vector<string>& queries) {
+    string fullScript = "";
+    for (const auto& q : queries) {
+        fullScript += q + "\n";
+    }
+    cout << "Running parser on " << queries.size() << " queries...\n";
+    cout << "---------------------------------------------------\n";
+
+    vector<Token> tokens = lexer.tokenize(fullScript);
+
+    bool result = parser.parse(tokens);
+
+    cout << "---------------------------------------------------\n";
+    cout << "Final Script Result: " << (result ? "SUCCESS" : "ERRORS DETECTED") << endl;
+    cout << "================================\n";
+    
+}
+

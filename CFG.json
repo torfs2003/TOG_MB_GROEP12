@@ -19,13 +19,13 @@
     "drop_stmt", "alter_stmt", "alter_action_list", "alter_action", "backup_statement", "def_list", 
     "col_def", "data_type", "base_type", "opt_type_params", "opt_constraints", 
     "constraint", "table_constraint", "opt_if_exists",
-    "uid", "opt_pcomma"
+    "uid", "opt_pcomma", "opt_ref_actions", "ref_action_list", "ref_action", "action_rule"
   ],
   "Terminals": [
     "T_EOF", "T_PCOMMA", "T_WITH", "T_COMMA", "T_ID", "T_AS", 
     "T_LPAREN", "T_RPAREN", "T_OR", "T_AND", "T_NOT", "T_IS", "T_NULL", 
     "T_BETWEEN", "T_IN", "T_EXISTS", "T_ADD", "T_MINUS", "T_STAR", "T_DIVIDE", 
-    "T_PERCENT", "T_DOT", 
+    "T_PERCENT", "T_DOT", "T_CASCADE", "T_RESTRICT", "T_ACTION", "T_NO",
     "T_INT", "T_FLOAT", "T_STRING", "T_BOOLEAN", "T_DATE_LIT", 
     "T_INT_TYPE", "T_FLOAT_TYPE", "T_STRING_TYPE", "T_BOOLEAN_TYPE", 
     "T_DEFAULT", "T_UNDERSCORE", "T_EQ", "T_NEQ", "T_LT", 
@@ -263,7 +263,6 @@
     {"head": "column_list", "body": ["column_list", "T_COMMA", "col_item"]},
 
     {"head": "col_item", "body": ["T_STAR"]},
-    {"head": "col_item", "body": ["uid", "T_DOT", "T_STAR"]},
     {"head": "col_item", "body": ["E"]},
     {"head": "col_item", "body": ["E", "T_AS", "uid"]},
 
@@ -411,8 +410,23 @@
     {"head": "constraint", "body": ["T_CHECK", "T_LPAREN", "C", "T_RPAREN"]},
 
     {"head": "table_constraint", "body": ["T_PK", "T_LPAREN", "column_name_list", "T_RPAREN"]},
-    {"head": "table_constraint", "body": ["T_FK", "T_LPAREN", "column_name_list", "T_RPAREN", "T_REFERENCES", "uid", "T_LPAREN", "column_name_list", "T_RPAREN"]},
+    {"head": "table_constraint", "body": ["T_FK", "T_LPAREN", "column_name_list", "T_RPAREN", "T_REFERENCES", "uid", "T_LPAREN", "column_name_list", "T_RPAREN", "opt_ref_actions"]},
     {"head": "table_constraint", "body": ["T_CHECK", "T_LPAREN", "C", "T_RPAREN"]},
-    {"head": "table_constraint", "body": ["T_UNIQUE", "T_LPAREN", "column_name_list", "T_RPAREN"]}
+    {"head": "table_constraint", "body": ["T_UNIQUE", "T_LPAREN", "column_name_list", "T_RPAREN"]},
+
+    {"head": "opt_ref_actions", "body": ["ref_action_list"]},
+    {"head": "opt_ref_actions", "body": []},
+
+    {"head": "ref_action_list", "body": ["ref_action"]},
+    {"head": "ref_action_list", "body": ["ref_action_list", "ref_action"]},
+
+    {"head": "ref_action", "body": ["T_ON", "T_DELETE", "action_rule"]},
+    {"head": "ref_action", "body": ["T_ON", "T_UPDATE", "action_rule"]},
+
+    {"head": "action_rule", "body": ["T_CASCADE"]},
+    {"head": "action_rule", "body": ["T_RESTRICT"]},
+    {"head": "action_rule", "body": ["T_SET", "T_NULL"]},
+    {"head": "action_rule", "body": ["T_SET", "T_DEFAULT"]},
+    {"head": "action_rule", "body": ["T_NO", "T_ACTION"]}
   ]
 }
