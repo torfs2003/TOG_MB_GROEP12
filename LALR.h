@@ -34,21 +34,17 @@ struct Production {
 struct StateProduction {
     std::string head;
     std::vector<std::string> body;
-    // For performance: use unordered_set for lookahead
     std::unordered_set<std::string> lookahead; 
 
-    // Constructor simplified (assumes lookahead is passed as unordered_set)
     StateProduction(std::string h, std::vector<std::string> b,
         std::unordered_set<std::string> la)
         : head(std::move(h)), body(std::move(b)), lookahead(std::move(la)) {}
     
-    // For kernel comparison (used in the unordered_set find)
     bool operator==(const StateProduction& other) const {
         return head == other.head && body == other.body;
     }
 };
 
-// Custom Hash for StateProduction (only based on the LR(0) kernel)
 struct StateProductionHash {
     size_t operator()(const StateProduction& prod) const {
         size_t hash_val = std::hash<std::string>{}(prod.head);
@@ -59,16 +55,13 @@ struct StateProductionHash {
     }
 };
 
-// Use unordered_set for states for O(1) average lookup/insertion (Performance critical)
 using State = std::unordered_set<StateProduction, StateProductionHash>;
 
-// Custom Hash for State (needed for the kernelIndexMap)
 struct StateHash {
     size_t operator()(const State& state) const {
         size_t seed = 0;
         StateProductionHash prod_hash;
         for (const auto& prod : state) {
-            // Combine hash of each item's kernel
             seed ^= prod_hash(prod) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
         }
         return seed;
@@ -78,14 +71,10 @@ struct StateHash {
 struct namedState {
     std::string name;
     State state;
-    // ... (rest of namedState remains as it was)
     namedState(const std::string &name, const State &state)
         : name(name),
           state(state) {
     }
-    // Note: comparison for namedState should be avoided on 'state' if State is unordered_set, 
-    // unless you want to iterate/compare contents (which is slow).
-    // I removed the operator< and == overloads as they contradict the unordered_set type.
 };
 
 struct Action {
@@ -106,21 +95,19 @@ struct Action {
 
 class CFG {
 private:
-    std::unordered_set<std::string> variables = {}; // Use unordered_set
-    std::unordered_set<std::string> terminals = {}; // Use unordered_set
+    std::unordered_set<std::string> variables = {}; 
+    std::unordered_set<std::string> terminals = {}; 
     std::string Start = "";
-    std::vector<Production> productions = {}; // Change to vector for fast iteration and indexing
-    std::unordered_set<std::string> nullableSymbols = {}; // Use unordered_set
+    std::vector<Production> productions = {}; 
+    std::unordered_set<std::string> nullableSymbols = {}; 
     
-    // Pre-calculated sets for O(1) closure lookups
     std::unordered_map<std::string, std::unordered_set<std::string>> firstSets; 
 
     std::vector<std::map<std::string, unsigned int>> GOTO;
     std::vector<std::map<std::string, Action>> ACTION;
     
-    // Removed old, inefficient lookahead helpers
     
-    std::unordered_set<std::string> getNullable(); // Returns unordered_set
+    std::unordered_set<std::string> getNullable(); 
     std::unordered_map<std::string, std::unordered_set<std::string>> computeFirstSets();
     
     void closure(State& state);
@@ -134,7 +121,6 @@ public:
     void saveTableToJSON(const std::string& filename);
 
     CFG(const std::string& filename);
-    // Simplified constructor to match new private types
     CFG(std::unordered_set<std::string> variables, std::unordered_set<std::string> terminals, std::string start,
         std::vector<Production> productions)
         : variables(std::move(variables)), terminals(std::move(terminals)), Start(std::move(start)),

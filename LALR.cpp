@@ -17,7 +17,6 @@ CFG::CFG(const std::string &filename) {
         terminals.insert(terminal.get<std::string>());
     }
     Start = j["Start"];
-    // Using a vector of Productions here for easier indexing/iteration
     for (const auto& production : j["Productions"]) {
         productions.push_back({production["head"], production["body"].get<std::vector<std::string>>()});
     }
@@ -136,18 +135,16 @@ void CFG::closure(State &state) {
                             newBody.insert(newBody.end(), p.body.begin(), p.body.end());
                             StateProduction newProd{p.head, newBody, LA};
                             
-                            auto it = state.find(newProd); // O(1) average lookup
+                            auto it = state.find(newProd); 
                             if (it == state.end()) {
                                 state.insert(std::move(newProd));
                                 changed = true;
                             } else {
-                                // Item exists (same kernel) -> Merge lookahead
                                 StateProduction existingProd = *it;
                                 size_t oldSize = existingProd.lookahead.size();
                                 existingProd.lookahead.insert(LA.begin(), LA.end());
                                 
                                 if (existingProd.lookahead.size() > oldSize) {
-                                    // Lookahead changed -> remove old, insert new
                                     state.erase(it);
                                     state.insert(std::move(existingProd));
                                     changed = true;
@@ -163,7 +160,6 @@ void CFG::closure(State &state) {
 
 
 
-// sameKernel: Faster comparison using the StateProduction's operator==
 bool CFG::sameKernel(const State& s1, const State& s2) {
     if (s1.size() != s2.size()) return false;
     for (const auto& prod1 : s1) {
@@ -174,7 +170,6 @@ bool CFG::sameKernel(const State& s1, const State& s2) {
     return true;
 }
 
-// Change return type from void to bool
 bool CFG::merge(State &s1, const State &s2) {
     bool changed = false;
     State merged_s1 = s1;
@@ -183,14 +178,11 @@ bool CFG::merge(State &s1, const State &s2) {
     for (const auto& prod1 : merged_s1) {
         auto it2 = s2.find(prod1);
         if (it2 != s2.end()) {
-            // Kernel matches, merge lookaheads
             StateProduction merged_prod = prod1;
             size_t oldSize = merged_prod.lookahead.size();
             
-            // Insert lookaheads from s2 into the merged product
             merged_prod.lookahead.insert(it2->lookahead.begin(), it2->lookahead.end());
             
-            // Check if size increased (meaning we found new lookaheads)
             if (merged_prod.lookahead.size() > oldSize) {
                 changed = true;
             }
@@ -203,10 +195,8 @@ bool CFG::merge(State &s1, const State &s2) {
 }
 
 void CFG::toStates() {
-    // 1. Initialization
     std::unordered_map<State, unsigned int, StateHash> kernelIndexMap;
 
-    // Define the Augmented Start Symbol S'
     std::string startHead = Start + "'";
     std::vector<std::string> startBody = {"." , Start};
     std::unordered_set<std::string> startLookahead = {"$"};
@@ -219,7 +209,6 @@ void CFG::toStates() {
     states.push_back(initialState);
     kernelIndexMap.emplace(initialState, 0);
 
-    // 2. Generate LR(0) State Structure
     for (unsigned int i = 0; i < states.size(); i++) {
         std::unordered_set<std::string> transitionSymbols = {}; 
         
@@ -265,7 +254,6 @@ void CFG::toStates() {
         }
     }
 
-    // 2.5 Propagate Lookaheads
     bool changed = true;
     while (changed) {
         changed = false;
@@ -293,7 +281,6 @@ void CFG::toStates() {
         }
     }
 
-    // 3. Calculate LALR States (Merging Kernels)
     std::vector<std::set<int>> LALR_States;
     std::vector<bool> stateHandled(states.size(), false);
 
@@ -313,7 +300,6 @@ void CFG::toStates() {
         LALR_States.push_back(currentGroup);
     }
 
-    // 4. Create Final Named States
     std::vector<namedState> FinalStates = {};
     for (const std::set<int>& s : LALR_States) {
         State newState;
@@ -332,13 +318,11 @@ void CFG::toStates() {
         FinalStates.push_back(namedState(name, newState));
     }
 
-    // 5. Build Action/Goto Tables
     std::unordered_map<std::string, unsigned int> nameToIndex;
     for (unsigned int i = 0; i < FinalStates.size(); i++) {
         nameToIndex[FinalStates[i].name] = i;
     }
 
-    // Map old state indices to new LALR state indices
     std::vector<int> oldToNewIndex(states.size());
     for(int i=0; i<states.size(); ++i) {
         for(int grpIdx = 0; grpIdx < LALR_States.size(); ++grpIdx) {
@@ -352,7 +336,6 @@ void CFG::toStates() {
     GOTO.assign(FinalStates.size(), {});
     ACTION.assign(FinalStates.size(), {});
 
-    // Fill GOTO and ACTION (Shift)
     for (const auto& transition : transitions) {
         unsigned int fromOld = std::get<0>(transition);
         std::string symbol   = std::get<1>(transition);
@@ -368,27 +351,21 @@ void CFG::toStates() {
         }
     }
 
-    // Fill ACTION (Reduce/Accept)
     for (unsigned int i = 0; i < FinalStates.size(); i++) {
         const namedState& state = FinalStates[i];
         
         for (const StateProduction& production : state.state) {
-            // Check if dot is at the end
             if (!production.body.empty() && production.body.back() == ".") {
                 
-                // Case 1: ACCEPT
-                // We check if the HEAD is the augmented start symbol (Start + "'")
                 if (production.head == startHead) {
                     for (const std::string& s : production.lookahead) {
                         if (s == "$") {
                             ACTION[i][s] = Action{Action::ACCEPT};
                         }
                     }
-                    continue; // Done with this item
+                    continue; 
                 }
 
-                // Case 2: REDUCE
-                // Find original production to store in the action
                 std::vector<std::string> bodyNoDot(production.body.begin(), production.body.end()-1);
                 Production originalProd;
                 bool found = false;
@@ -408,18 +385,16 @@ void CFG::toStates() {
                         if (ACTION[i].count(s)) {
                             const Action& existing = ACTION[i][s];
                             
-                            // SHIFT priority: If we can shift, do NOT overwrite with reduce.
                             if (existing.type == Action::SHIFT) {
                                 skip = true; 
                             } 
-                            // Reduce/Reduce Conflict detection
                             else if (existing.type == Action::REDUCE) {
                                 if (existing.prod.head != originalProd.head || existing.prod.body != originalProd.body) {
                                     std::cerr << "CRITICAL WARNING: Reduce/Reduce conflict in State " << i 
                                               << " on symbol '" << s << "'.\n"
                                               << "  Existing: " << existing.prod.head << " -> ...\n"
                                               << "  New:      " << originalProd.head << " -> ...\n";
-                                    skip = true; // Keep existing
+                                    skip = true; 
                                 }
                             }
                             else if (existing.type == Action::ACCEPT) {
@@ -436,7 +411,6 @@ void CFG::toStates() {
         }
     }
 
-    // Debug Print (Optional)
     std::cout << "===== ACTION TABLE =====\n\n";
     for (int state = 0; state < ACTION.size(); state++) {
         std::cout << "State " << state << ":\n";
@@ -461,13 +435,10 @@ void CFG::toStates() {
 void CFG::saveTableToJSON(const std::string& filename) {
     json root;
     
-    // 1. Serialize ACTION Table
-    // ACTION is a vector<map<string, Action>>
     for (int i = 0; i < ACTION.size(); i++) {
         for (auto const& [symbol, action] : ACTION[i]) {
             std::string stateStr = std::to_string(i);
             
-            // We create a JSON object for this specific action
             json actionObj;
             
             if (action.type == Action::SHIFT) {
@@ -476,14 +447,13 @@ void CFG::saveTableToJSON(const std::string& filename) {
             } 
             else if (action.type == Action::REDUCE) {
                 actionObj["type"] = "REDUCE";
-                actionObj["lhs"] = action.prod.head; // Head of production
-                actionObj["rhs"] = action.prod.body; // Body (vector of strings)
+                actionObj["lhs"] = action.prod.head; 
+                actionObj["rhs"] = action.prod.body; 
             } 
             else if (action.type == Action::ACCEPT) {
                 actionObj["type"] = "ACCEPT";
             }
             
-            // Store it: root["action"][state_index][symbol] = { ... }
             root["action_table"][stateStr][symbol] = actionObj;
         }
     }
@@ -496,6 +466,6 @@ void CFG::saveTableToJSON(const std::string& filename) {
     }
 
     std::ofstream file(filename);
-    file << root.dump(4); // dump(4) adds pretty indentation
+    file << root.dump(4); 
     std::cout << "Parse table saved to " << filename << std::endl;
 }
