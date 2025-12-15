@@ -15,6 +15,7 @@ const unordered_set<string> time_based_functions = {
     "SLEEP", "WAITFOR", "BENCHMARK"
 };
 
+// Mapping van SQL keywords naar Token types
 SimpleLexer::SimpleLexer() {
     keywords["ADD"] = "T_ADD"; 
     keywords["ALL"] = "T_ALL";
@@ -141,6 +142,7 @@ SimpleLexer::SimpleLexer() {
     keywords["PRECEDING"] = "T_PRECEDING";
     keywords["OUTER"] = "T_OUTER";
     keywords["IF"] = "T_IF";
+    // Mapping van leestekens
     symbols['*'] = "T_STAR";    symbols[','] = "T_COMMA";
     symbols[';'] = "T_PCOMMA";     symbols['('] = "T_LPAREN";
     symbols[')'] = "T_RPAREN";  symbols['='] = "T_EQ";
@@ -158,6 +160,7 @@ vector<Token> SimpleLexer::tokenize(string input) {
         char c = input[i];
         if (isspace(c)) { i++; continue; }
 
+        // Skip multiline comments /* ... */
         if (c == '/' && i + 1 < input.length() && input[i+1] == '*') {
             i += 2; 
             while (i < input.length()) {
@@ -170,6 +173,7 @@ vector<Token> SimpleLexer::tokenize(string input) {
             continue; 
         }
 
+        // Skip single line comments -- ...
         if (c == '-' && i + 1 < input.length() && input[i+1] == '-') {
             while (i < input.length() && input[i] != '\n') {
                 i++; 
@@ -177,14 +181,14 @@ vector<Token> SimpleLexer::tokenize(string input) {
             continue; 
         }
 
-       
+       // Strings ("...")
         if (c == '"') {
             string val;
             i++; 
             while (i < input.length()) {
                 if (input[i] == '"') {
                     if (i + 1 < input.length() && input[i+1] == '"') {
-                        val += '"';
+                        val += '"'; // Escaped quote in SQL
                         i += 2;
                     } else {
                         i++;
@@ -198,7 +202,7 @@ vector<Token> SimpleLexer::tokenize(string input) {
             continue;
         }
 
-    
+        // Hexadecimale getallen (0x...) - Vaak gebruikt voor obfuscation
         if (c == '0' && i + 1 < input.length() && (input[i+1] == 'x' || input[i+1] == 'X')) {
             string hexStr = "0x";
             i += 2; 
@@ -209,6 +213,7 @@ vector<Token> SimpleLexer::tokenize(string input) {
             continue;
         }
 
+        // Getallen
         if (isdigit(c)) {
             string num;
             bool isFloat = false;
@@ -220,7 +225,7 @@ vector<Token> SimpleLexer::tokenize(string input) {
             continue;
         }
 
-
+        // Identifiers en Keywords
         if (isalpha(c) || c == '_' || c == '@') { 
             string word;
             while (i < input.length() && (isalnum(input[i]) || input[i] == '_' || input[i] == '@')) {
@@ -230,6 +235,7 @@ vector<Token> SimpleLexer::tokenize(string input) {
             string upper = word;
             transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
 
+            // Speciale gevallen voor gecombineerde keywords
             if (upper == "NOT") {
                 int tempI = i;
                 while (tempI < input.length() && isspace(input[tempI])) tempI++;
@@ -260,6 +266,7 @@ vector<Token> SimpleLexer::tokenize(string input) {
                 }
             }
 
+            // PRIMARY KEY detectie
             if (upper == "PRIMARY") {
                 int tempI = i; 
                 while (tempI < input.length() && isspace(input[tempI])) tempI++;
@@ -280,6 +287,7 @@ vector<Token> SimpleLexer::tokenize(string input) {
                 }
             }
 
+            // FOREIGN KEY detectie
             if (upper == "FOREIGN") {
                 int tempI = i; 
                 while (tempI < input.length() && isspace(input[tempI])) tempI++;
@@ -308,6 +316,7 @@ vector<Token> SimpleLexer::tokenize(string input) {
             continue;
         }
       
+        // Single quoted strings ('...')
         if (c == '\'') {
             string s;
             i++;
@@ -328,6 +337,7 @@ vector<Token> SimpleLexer::tokenize(string input) {
             continue;
         }
 
+        // Symbolen en operators
         if (symbols.count(c) || c == '!' || c == '<' || c == '>' || c == '|') {
             string op(1, c);
             bool handled = false;
@@ -376,6 +386,7 @@ string RBACManager::getRoleName(UserRole role) {
     }
 }
 
+// Controleert permissies op basis van het eerste commando in de query
 bool RBACManager::hasPermission(UserRole role, const vector<Token>& tokens) {
     if (tokens.empty()) return false;
 
@@ -420,6 +431,7 @@ LALRParser::LALRParser(string filename) {
     json j;
     f >> j;
 
+    // Laad de Action Table
     for (auto& [stateStr, actions] : j["action_table"].items()) {
         int state = stoi(stateStr);
         for (auto& [sym, act] : actions.items()) {
@@ -435,6 +447,7 @@ LALRParser::LALRParser(string filename) {
         }
     }
 
+    // Laad de Goto Table
     for (auto& [stateStr, gotos] : j["goto_table"].items()) {
         int state = stoi(stateStr);
         for (auto& [nonTerm, nextState] : gotos.items()) {
@@ -460,6 +473,7 @@ bool LALRParser::parse(vector<Token>& tokens) {
         Token currentToken = tokens[tokenIdx];
         string sym = currentToken.type;
 
+        // Als er geen actie is voor dit symbool in de huidige state: Error
         if (actionTable[currentState].find(sym) == actionTable[currentState].end()) {
             
             if (currentState == 0 && (sym == "T_EOF" || sym == "$")) {
@@ -474,6 +488,7 @@ bool LALRParser::parse(vector<Token>& tokens) {
                 recoveryMode = true; 
             }
 
+            // Probeer te herstellen bij een puntkomma (;)
             if (sym == "T_PCOMMA") {
                 cout << "    --> [Recovery] Found delimiter ';'. Resuming parse..." << endl;
                 
@@ -509,6 +524,7 @@ bool LALRParser::parse(vector<Token>& tokens) {
             stateStack.push(act.state);
             tokenIdx++;
 
+            // Bij een puntkomma is de query afgerond
             if (sym == "T_PCOMMA") {
                 if (!currentQueryError) {
                     cout << "\n         Result: \033[1;32m[ACCEPTED]\033[0m" << endl;
@@ -571,10 +587,12 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole ro
     
     bool dangerous = false;
 
+    // Detecteer comments die vaak gebruikt worden om syntax checks te omzeilen
     if (query.find("--") != string::npos || query.find("/*") != string::npos) {
         cout << "   --> \033[1;31m[ALERT]\033[0m Suspicious Comment found ('--' or '/*'). Possible truncation attack." << endl;
         dangerous = true;
     }
+    // Detecteer toegang tot systeem tabellen
     if (query.find("information_schema") != string::npos || 
         query.find("pg_catalog") != string::npos) {
         cout << "   --> \033[1;31m[ALERT]\033[0m System Schema Access detected. Risk of enumeration." << endl;
@@ -587,6 +605,7 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole ro
         string type = tokens[i].type;
         string value = tokens[i].value;
 
+        // Detecteer Tautologies (bv: 1=1 of 'a'='a')
         if (i + 2 < tokens.size()) {
             string t1 = tokens[i].type;
             string t2 = tokens[i+1].type;
@@ -605,6 +624,7 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole ro
             }
         }
 
+        // Detecteer Stacked Queries (meerdere commando's)
         if (type == "T_PCOMMA") {
             if (i + 1 < tokens.size() && tokens[i+1].type != "T_EOF" && tokens[i+1].type != "$") {
                 cout << "   --> \033[1;31m[ALERT]\033[0m Stacked Query detected (';' followed by command). Possible command injection." << endl;
@@ -612,11 +632,13 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole ro
             }
         }
 
+        // Detecteer logische negatie, vaak gebruikt voor bypass
         if (type == "T_OR" && i + 1 < tokens.size() && tokens[i+1].type == "T_NOT") {
             cout << "   --> \033[1;31m[ALERT]\033[0m Logical Negation ('OR NOT') detected. Possible filter bypass." << endl;
             dangerous = true;
         }
 
+        // Check op gevaarlijke keywords
         if (dangerous_keywords.count(type)) {
             if (role == ROLE_ADMIN) {
                 continue; 
@@ -630,17 +652,20 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole ro
             string upperValue = value;
             transform(upperValue.begin(), upperValue.end(), upperValue.begin(), ::toupper);
             
+            // Detecteer Time-Based functies (DoS risico)
             if (time_based_functions.count(upperValue)) {
                 cout << "   --> \033[1;31m[ALERT]\033[0m Time-Based Function (" << upperValue << ") detected. DOS/Stealth risk." << endl;
                 dangerous = true;
             }
 
+            // Detecteer System Variables (@@version)
             if (value.size() >= 2 && value.substr(0, 2) == "@@") {
                 cout << "   --> \033[1;31m[ALERT]\033[0m System Variable / Version fingerprinting detected (" << value << ")." << endl;
                 dangerous = true;
             }
         }
 
+        // Detecteer Hex Encoding (0x...)
         if (type == "T_INT" || type == "T_STRING") {
             if (value.size() > 2 && (value.substr(0, 2) == "0x" || value.substr(0, 2) == "0X")) {
                 cout << "   --> \033[1;31m[ALERT]\033[0m Hexadecimal Literal detected. Possible payload obfuscation." << endl;
@@ -648,10 +673,25 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole ro
             }
         }
         
+        // UNION attacks
         if (type == "T_UNION") {
             cout << "   --> \033[1;31m[ALERT]\033[0m 'UNION' detected. Possible data exfiltration." << endl;
             dangerous = true;
         }
+
+        // Gevallen opvangen wanneer "INTO" wordt gebruikt als aanval
+        if (type == "T_INTO") {
+            if (!tokens.empty()) {
+                string firstCommand = tokens[0].type;
+
+                if (firstCommand == "T_SELECT" || firstCommand == "T_WITH") {
+                    cout << "   --> \033[1;31m[ALERT]\033[0m 'SELECT ... INTO' detected. Unauthorized table creation." << endl;
+                    dangerous = true;
+                }
+            }
+        }
+
+
     }
 
     if (!dangerous) {
@@ -663,6 +703,7 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole ro
 void ensureParseTable(const string& grammarFile, const string& tableFile) {
     bool needToGenerate = true;
 
+    // Check op basis van timestamps om te zien of we opnieuw moeten genereren
     if (fs::exists(tableFile) && fs::exists(grammarFile)) {
         auto grammarTime = fs::last_write_time(grammarFile);
         auto tableTime = fs::last_write_time(tableFile);
@@ -700,11 +741,13 @@ void runCheck(const string& tableFile, const vector<string>& queries, UserRole r
         
         vector<Token> tokens = lexer.tokenize(q);
 
+        // 1. RBAC Check (Mag deze rol dit commando uitvoeren?)
         if (!rbac.hasPermission(role, tokens)) {
             cout << ">>> ACTION: \033[1;31mDENIED (INSUFFICIENT PRIVILEGES)\033[0m" << endl;
             continue; 
         }
 
+        // 2. Security Check (Zit er een injectie in?)
         bool isRisk = security.isDangerous(lexer, q, role);
         
         if (isRisk) {
@@ -713,6 +756,7 @@ void runCheck(const string& tableFile, const vector<string>& queries, UserRole r
             continue; 
         } 
 
+        // 3. Syntax Check (Is het valide SQL?)
         cout << ">>> ACTION: \033[1;32mALLOWED (Proceeding to Execution)\033[0m" << endl;
         bool validSyntax = parser.parse(tokens);
 

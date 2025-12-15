@@ -1,8 +1,6 @@
 #include "LALR.h"
 #include "json.hpp"
 
-
-
 CFG::CFG(const string &filename) {
     ifstream input(filename);
     json j;
@@ -19,11 +17,13 @@ CFG::CFG(const string &filename) {
         productions.push_back({production["head"], production["body"].get<vector<string>>()});
     }
     
+    // Initialiseer de helper sets die nodig zijn voor de parser generatie
     nullableSymbols = getNullable();
     firstSets = computeFirstSets();
 }
 
-
+// Berekent de FIRST set voor elke variabele.
+// Dit blijft itereren totdat er geen veranderingen meer zijn (fixed-point algoritme).
 unordered_map<string, unordered_set<string>> CFG::computeFirstSets() {
     unordered_map<string, unordered_set<string>> first;
     bool changed = true;
@@ -46,6 +46,7 @@ unordered_map<string, unordered_set<string>> CFG::computeFirstSets() {
                     for (const auto& term : first[sym]) {
                         if (term != "ε") first[head].insert(term);
                     }
+                    // Alleen doorgaan naar het volgende symbool als dit symbool nullable is
                     if (!nullableSymbols.count(sym)) break;
                 }
             }
@@ -55,6 +56,7 @@ unordered_map<string, unordered_set<string>> CFG::computeFirstSets() {
     return first;
 }
 
+// Bepaalt welke niet-terminalen tot epsilon kunnen reduceren.
 unordered_set<string> CFG::getNullable() {
     unordered_set<string> nullable = {};
     bool changed = true;
@@ -77,16 +79,18 @@ unordered_set<string> CFG::getNullable() {
     return nullable;
 }
 
+// Breidt de state uit met alle producties die direct kunnen volgen (closure operatie).
+// Berekent ook de lookaheads voor de nieuwe items.
 void CFG::closure(State &state) {
     bool changed = true;
     while (changed) {
         changed = false;
         
-
         vector<StateProduction> current_items(state.begin(), state.end());
         
         for (const StateProduction &prod : current_items) {
             
+            // Vind de positie van de dot
             int dot_pos = -1;
             for (size_t i = 0; i < prod.body.size(); i++) {
                 if (prod.body[i] == ".") {
@@ -95,11 +99,13 @@ void CFG::closure(State &state) {
                 }
             }
 
+            // Als de dot voor een variabele staat
             if (dot_pos != -1 && dot_pos + 1 < prod.body.size()) {
                 const string &nextSymbol = prod.body[dot_pos + 1];
                 
                 if (variables.count(nextSymbol)) {
                     
+                    // Bereken de FIRST set van beta
                     vector<string> beta_vector;
                     if (dot_pos + 2 < prod.body.size()) {
                         beta_vector.assign(prod.body.begin() + dot_pos + 2, prod.body.end());
@@ -108,6 +114,7 @@ void CFG::closure(State &state) {
                     unordered_set<string> LA;
                     bool beta_is_nullable = true;
 
+                    // De lookahead voor de nieuwe items komt uit FIRST(beta)
                     for (const string& sym : beta_vector) {
                         if (terminals.count(sym)) {
                             LA.insert(sym);
@@ -123,10 +130,12 @@ void CFG::closure(State &state) {
                             }
                         }
                     }
+                    // Als beta volledig nullable is, erven we de lookahead van de parent
                     if (beta_is_nullable) {
                         LA.insert(prod.lookahead.begin(), prod.lookahead.end());
                     }
 
+                    // Voeg producties toe voor nextSymbol met de berekende lookahead
                     for (const Production &p : productions) {
                         if (p.head == nextSymbol) {
                             vector<string> newBody = {"."};
@@ -138,6 +147,8 @@ void CFG::closure(State &state) {
                                 state.insert(move(newProd));
                                 changed = true;
                             } else {
+
+                                // Als productie al bestaat, voeg nieuwe lookaheads toe (merge)
                                 StateProduction existingProd = *it;
                                 size_t oldSize = existingProd.lookahead.size();
                                 existingProd.lookahead.insert(LA.begin(), LA.end());
@@ -156,8 +167,8 @@ void CFG::closure(State &state) {
     }
 }
 
-
-
+// Checkt of twee states dezelfde 'kern' items hebben (negeert lookaheads).
+// Bij LALR mogen we states mergen als de kern gelijk is.
 bool CFG::sameKernel(const State& s1, const State& s2) {
     if (s1.size() != s2.size()) return false;
     for (const auto& prod1 : s1) {
@@ -168,6 +179,7 @@ bool CFG::sameKernel(const State& s1, const State& s2) {
     return true;
 }
 
+// Voegt lookaheads van s2 toe aan s1 als de items overeenkomen
 bool CFG::merge(State &s1, const State &s2) {
     bool changed = false;
     State merged_s1 = s1;
@@ -202,14 +214,17 @@ void CFG::toStates() {
     vector<State> states;
     vector<tuple<unsigned int, string, unsigned int>> transitions = {};
 
+    // 1. Initialisatie: Begin met de start productie en bereken closure
     State initialState = {{ StateProduction{startHead, startBody, startLookahead}}};
     closure(initialState);
     states.push_back(initialState);
     kernelIndexMap.emplace(initialState, 0);
 
+    // 2. Bouw de canonical collection van LR(1) states
     for (unsigned int i = 0; i < states.size(); i++) {
         unordered_set<string> transitionSymbols = {}; 
         
+        // Verzamel alle symbolen waar de dot (.) voor staat
         for (const StateProduction& prod : states[i]) {
             const auto& b = prod.body;
             for (size_t p = 0; p < b.size() - 1; p++) {
@@ -221,12 +236,15 @@ void CFG::toStates() {
             }
         }
 
+        // Maak GOTO states voor elk symbool
         for (const string& symbol : transitionSymbols) {
             State gotoState;
             for (const StateProduction& prod : states[i]) {
                 const auto& b = prod.body;
                 for (size_t p = 0; p < b.size() - 1; p++) {
                     if (b[p] == "." && b[p+1] == symbol) {
+
+                        // Verschuif de dot (SHIFT operatie simulatie)
                         vector<string> newBody = b;
                         swap(newBody[p], newBody[p+1]);
                         gotoState.insert(StateProduction(prod.head, newBody, prod.lookahead));
@@ -237,12 +255,13 @@ void CFG::toStates() {
             
             closure(gotoState);
             
+            // Check of deze state al bestaat
             unsigned int index = -1;
             auto it = kernelIndexMap.find(gotoState);
             
             if (it != kernelIndexMap.end()) {
                 index = it->second;
-                merge(states[index], gotoState); 
+                merge(states[index], gotoState); // Merge lookaheads als state al bestaat
             } else {
                 states.push_back(gotoState);
                 index = states.size() - 1;
@@ -252,6 +271,7 @@ void CFG::toStates() {
         }
     }
 
+    // 3. Propageer lookaheads (iteratief mergen totdat er niets meer verandert)
     bool changed = true;
     while (changed) {
         changed = false;
@@ -261,6 +281,7 @@ void CFG::toStates() {
             unsigned int toIdx   = get<2>(trans);
 
             State tempGoto;
+            // Opnieuw GOTO berekenen om lookaheads door te geven
             for (const StateProduction& prod : states[fromIdx]) {
                 const auto& b = prod.body;
                 for (size_t p = 0; p < b.size() - 1; p++) {
@@ -279,6 +300,7 @@ void CFG::toStates() {
         }
     }
 
+    // 4. LALR Conversie: Groepeer states met dezelfde kern
     vector<set<int>> LALR_States;
     vector<bool> stateHandled(states.size(), false);
 
@@ -298,6 +320,7 @@ void CFG::toStates() {
         LALR_States.push_back(currentGroup);
     }
 
+    // Maak de definitieve samengevoegde states
     vector<namedState> FinalStates = {};
     for (const set<int>& s : LALR_States) {
         State newState;
@@ -316,6 +339,7 @@ void CFG::toStates() {
         FinalStates.push_back(namedState(name, newState));
     }
 
+    // Mapping van oude indices naar nieuwe LALR indices
     unordered_map<string, unsigned int> nameToIndex;
     for (unsigned int i = 0; i < FinalStates.size(); i++) {
         nameToIndex[FinalStates[i].name] = i;
@@ -331,9 +355,11 @@ void CFG::toStates() {
         }
     }
 
+    // 5. Tabel Generatie (ACTION en GOTO)
     GOTO.assign(FinalStates.size(), {});
     ACTION.assign(FinalStates.size(), {});
 
+    // Vul SHIFT acties en GOTO tabel
     for (const auto& transition : transitions) {
         unsigned int fromOld = get<0>(transition);
         string symbol   = get<1>(transition);
@@ -349,12 +375,15 @@ void CFG::toStates() {
         }
     }
 
+    // Vul REDUCE en ACCEPT acties
     for (unsigned int i = 0; i < FinalStates.size(); i++) {
         const namedState& state = FinalStates[i];
         
         for (const StateProduction& production : state.state) {
+            // Als item eindigt met een punt (.): REDUCE mogelijkheid
             if (!production.body.empty() && production.body.back() == ".") {
                 
+                // ACCEPT conditie: Start' -> Start .
                 if (production.head == startHead) {
                     for (const string& s : production.lookahead) {
                         if (s == "$") {
@@ -364,6 +393,7 @@ void CFG::toStates() {
                     continue; 
                 }
 
+                // Zoek de originele productie om te reduceren
                 vector<string> bodyNoDot(production.body.begin(), production.body.end()-1);
                 Production originalProd;
                 bool found = false;
@@ -380,18 +410,17 @@ void CFG::toStates() {
                     for (const string& s : production.lookahead) {
                         bool skip = false;
 
+                        // Conflict detectie (Shift/Reduce of Reduce/Reduce)
                         if (ACTION[i].count(s)) {
                             const Action& existing = ACTION[i][s];
                             
                             if (existing.type == Action::SHIFT) {
-                                skip = true; 
+                                skip = true;
                             } 
                             else if (existing.type == Action::REDUCE) {
                                 if (existing.prod.head != originalProd.head || existing.prod.body != originalProd.body) {
                                     cerr << "CRITICAL WARNING: Reduce/Reduce conflict in State " << i 
-                                              << " on symbol '" << s << "'.\n"
-                                              << "  Existing: " << existing.prod.head << " -> ...\n"
-                                              << "  New:      " << originalProd.head << " -> ...\n";
+                                         << " on symbol '" << s << "'.\n";
                                     skip = true; 
                                 }
                             }
@@ -408,7 +437,8 @@ void CFG::toStates() {
             }
         }
     }
-
+    
+    // Print debug output
     cout << "===== ACTION TABLE =====\n\n";
     for (int state = 0; state < ACTION.size(); state++) {
         cout << "State " << state << ":\n";

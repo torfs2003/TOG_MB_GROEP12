@@ -46,6 +46,27 @@ int main() {
         // 8. Een legitieme Admin actie.
         // DOEL: Admin mag CREATE gebruiken (Firewall negeert dit veilig).
         "CREATE TABLE backup_2024 (id INT, data TEXT);"
+
+        // --- DEEL 5: DE 'INTO' VALKUIL (De Context Test) ---
+        // 9. Legitieme INSERT INTO (Schrijf-actie).
+        // DOEL: Testen of de firewall niet ELKE 'INTO' blokkeert.
+        // VERWACHT: 
+        // - CLIENT:   Denied (RBAC: Mag niet schrijven)
+        // - EMPLOYEE: Allowed (Mag schrijven)
+        // - ADMIN:    Allowed
+        "INSERT INTO audit_logs (event, user) VALUES ('login', 'admin');",
+
+        // 10. Gevaarlijke SELECT ... INTO (Tabel Creatie).
+        // DOEL: Testen of de firewall ziet dat dit stiekem een tabel aanmaakt.
+        // VERWACHT: 
+        // - CLIENT:   Blocked (Security: 'SELECT INTO' gedetecteerd)
+        // - EMPLOYEE: Blocked (Security: Ook employees mogen geen tabellen maken)
+        // - ADMIN:    Allowed (of Blocked, afhankelijk van of je admin uitzondert in de INTO check)
+        "SELECT * INTO hidden_table FROM users WHERE active = 1;",
+        
+        // 11. Legitieme INSERT (zonder stacked query, zonder create)
+        // DOEL: Bewijzen dat de firewall 'INSERT INTO' NIET blokkeert voor Employee.
+        "INSERT INTO audit_logs (event, user) VALUES ('login', 'test_user');"
     };
 
     // CLIENT (Alleen Lezen)

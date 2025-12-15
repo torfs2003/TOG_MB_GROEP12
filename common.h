@@ -1,5 +1,5 @@
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef TOG_COMMON_H
+#define TOG_COMMON_H
 
 #include <iostream>
 #include <fstream>
@@ -23,4 +23,4 @@ using json = nlohmann::json;
 namespace fs = filesystem;
 
 
-#endif
+#endif //TOG_COMMON_H
