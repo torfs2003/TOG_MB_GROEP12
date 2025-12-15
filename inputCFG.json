@@ -1,0 +1,20 @@
+{
+  "Variables": ["Program", "Stmts", "Stmt", "Expr", "Term", "Factor"],
+  "Terminals": ["id", "=", ";", "{", "}", "if", "(", ")", "else", "+", "*"],
+  "Start": "Program",
+  "Productions": [
+    { "head": "Program", "body": ["Stmts"] },
+    { "head": "Stmts", "body": ["Stmts", "Stmt"] },
+    { "head": "Stmts", "body": [] },
+    { "head": "Stmt", "body": ["id", "=", "Expr", ";"] },
+    { "head": "Stmt", "body": ["if", "(", "Expr", ")", "Stmt"] },
+    { "head": "Stmt", "body": ["if", "(", "Expr", ")", "Stmt", "else", "Stmt"] },
+    { "head": "Stmt", "body": ["{", "Stmts", "}"] },
+    { "head": "Expr", "body": ["Expr", "+", "Term"] },
+    { "head": "Expr", "body": ["Term"] },
+    { "head": "Term", "body": ["Term", "*", "Factor"] },
+    { "head": "Term", "body": ["Factor"] },
+    { "head": "Factor", "body": ["(", "Expr", ")"] },
+    { "head": "Factor", "body": ["id"] }
+  ]
+}

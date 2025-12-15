@@ -4,24 +4,15 @@
 
 #ifndef LALR_1__PARSER_CFG_H
 #define LALR_1__PARSER_CFG_H
+#include "common.h"
 
-#include <iostream>
-#include <vector>
-#include <fstream>
-#include <map>
-#include <set>
-#include <unordered_set>
-#include <unordered_map>
-#include <tuple>
-#include <utility>
-#include <filesystem>
 
 struct Production {
-    std::string head;
-    std::vector<std::string> body;
+    string head;
+    vector<string> body;
     Production() = default;
-    Production(std::string h, std::vector<std::string> b)
-            : head(std::move(h)), body(std::move(b)) {}
+    Production(string h, vector<string> b)
+            : head(move(h)), body(move(b)) {}
     bool operator<(const Production& other) const {
         if (head != other.head) return head < other.head;
         return body < other.body;
@@ -32,13 +23,13 @@ struct Production {
 };
 
 struct StateProduction {
-    std::string head;
-    std::vector<std::string> body;
-    std::unordered_set<std::string> lookahead; 
+    string head;
+    vector<string> body;
+    unordered_set<string> lookahead; 
 
-    StateProduction(std::string h, std::vector<std::string> b,
-        std::unordered_set<std::string> la)
-        : head(std::move(h)), body(std::move(b)), lookahead(std::move(la)) {}
+    StateProduction(string h, vector<string> b,
+        unordered_set<string> la)
+        : head(move(h)), body(move(b)), lookahead(move(la)) {}
     
     bool operator==(const StateProduction& other) const {
         return head == other.head && body == other.body;
@@ -47,15 +38,15 @@ struct StateProduction {
 
 struct StateProductionHash {
     size_t operator()(const StateProduction& prod) const {
-        size_t hash_val = std::hash<std::string>{}(prod.head);
+        size_t hash_val = hash<string>{}(prod.head);
         for (const auto& sym : prod.body) {
-            hash_val ^= std::hash<std::string>{}(sym) + 0x9e3779b9 + (hash_val << 6) + (hash_val >> 2);
+            hash_val ^= hash<string>{}(sym) + 0x9e3779b9 + (hash_val << 6) + (hash_val >> 2);
         }
         return hash_val;
     }
 };
 
-using State = std::unordered_set<StateProduction, StateProductionHash>;
+using State = unordered_set<StateProduction, StateProductionHash>;
 
 struct StateHash {
     size_t operator()(const State& state) const {
@@ -69,9 +60,9 @@ struct StateHash {
 };
 
 struct namedState {
-    std::string name;
+    string name;
     State state;
-    namedState(const std::string &name, const State &state)
+    namedState(const string &name, const State &state)
         : name(name),
           state(state) {
     }
@@ -95,36 +86,35 @@ struct Action {
 
 class CFG {
 private:
-    std::unordered_set<std::string> variables = {}; 
-    std::unordered_set<std::string> terminals = {}; 
-    std::string Start = "";
-    std::vector<Production> productions = {}; 
-    std::unordered_set<std::string> nullableSymbols = {}; 
+    unordered_set<string> variables = {}; 
+    unordered_set<string> terminals = {}; 
+    string Start = "";
+    vector<Production> productions = {}; 
+    unordered_set<string> nullableSymbols = {}; 
     
-    std::unordered_map<std::string, std::unordered_set<std::string>> firstSets; 
+    unordered_map<string, unordered_set<string>> firstSets; 
 
-    std::vector<std::map<std::string, unsigned int>> GOTO;
-    std::vector<std::map<std::string, Action>> ACTION;
+    vector<map<string, unsigned int>> GOTO;
+    vector<map<string, Action>> ACTION;
     
-    
-    std::unordered_set<std::string> getNullable(); 
-    std::unordered_map<std::string, std::unordered_set<std::string>> computeFirstSets();
+    unordered_set<string> getNullable(); 
+    unordered_map<string, unordered_set<string>> computeFirstSets();
     
     void closure(State& state);
     bool sameKernel(const State& s1, const State& s2);
     bool merge(State& s1, const State& s2);
     
 public:
-    [[nodiscard]] std::vector<std::map<std::string, unsigned int>> goto_() const { return GOTO; }
-    [[nodiscard]] std::vector<std::map<std::string, Action>> action() const { return ACTION; }
+    [[nodiscard]] vector<map<string, unsigned int>> goto_() const { return GOTO; }
+    [[nodiscard]] vector<map<string, Action>> action() const { return ACTION; }
 
-    void saveTableToJSON(const std::string& filename);
+    void saveTableToJSON(const string& filename);
 
-    CFG(const std::string& filename);
-    CFG(std::unordered_set<std::string> variables, std::unordered_set<std::string> terminals, std::string start,
-        std::vector<Production> productions)
-        : variables(std::move(variables)), terminals(std::move(terminals)), Start(std::move(start)),
-          productions(std::move(productions)) 
+    CFG(const string& filename);
+    CFG(unordered_set<string> variables, unordered_set<string> terminals, string start,
+        vector<Production> productions)
+        : variables(move(variables)), terminals(move(terminals)), Start(move(start)),
+          productions(move(productions)) 
     {
         nullableSymbols = getNullable();
         firstSets = computeFirstSets();

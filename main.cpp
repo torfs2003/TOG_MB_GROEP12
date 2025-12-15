@@ -1,102 +1,61 @@
 #include "validator.h"
-#include "LALR.h"
-#include <iostream>
-#include <vector>
-#include <string>
-#include <filesystem>
-
-namespace fs = std::filesystem;
+#include "common.h"
 
 int main() {
-    const std::string grammarFile = "CFG.json";
-    const std::string tableFile = "parsetable.json";
-    bool needToGenerate = true;
-
-    // Check if we need to regenerate the parse table
-    if (fs::exists(tableFile) && fs::exists(grammarFile)) {
-        auto grammarTime = fs::last_write_time(grammarFile);
-        auto tableTime = fs::last_write_time(tableFile);
-
-        if (tableTime > grammarTime) {
-            std::cout << "Parse table is up to date. Skipping generation.\n";
-            needToGenerate = false;
-        } else {
-            std::cout << "Grammar file has changed. Regenerating parse table...\n";
-        }
-    } else {
-        std::cout << "Parse table not found. Generating...\n";
-    }
-
-    if (needToGenerate) {
-        CFG cfg(grammarFile);
-        cfg.toStates();      
-        cfg.saveTableToJSON(tableFile);
-    }
+    const string grammarFile = "CFG.json";
+    const string tableFile = "parsetable.json";
     
-    SimpleLexer lexer;
-    LALRParser parser(tableFile);
+    ensureParseTable(grammarFile, tableFile);
 
-    std::vector<std::string> queries = {
-        // ============================================================
-        // 12. ERROR: INSERT missing 'VALUES' keyword
-        // ============================================================
-        // Expectation: Error at '(', expected 'VALUES' or 'SELECT'.
-        "INSERT INTO users (id, name) "
-        "(1, 'Alice');", 
+    vector<string> queries = {
+        // --- DEEL 1: COMPLEXE SYNTAX (De Parser Test) ---
+        // 1. Een zware query met JOIN, Aliases en WHERE logica.
+        // DOEL: Laten zien dat je CFG robuust is.
+        "SELECT u.name, o.date FROM users JOIN orders ON u.id = o.user_id WHERE o.total > 100 AND (u.status = 'VIP' OR u.status = 'NEW');",
 
-        // ============================================================
-        // 13. ERROR: DELETE with '*' (Invalid Syntax)
-        // ============================================================
-        // Expectation: Error at '*', DELETE usually implies * (DELETE FROM...).
-        // If your grammar supports 'DELETE *', this might pass, but ANSI is 'DELETE FROM'.
-        "DELETE * FROM users WHERE id = 10;",
+        // 2. Een Nested Query (Subquery).
+        // DOEL: Laten zien dat je parser recursie aankan.
+        "SELECT * FROM products WHERE id IN (SELECT product_id FROM top_sellers);",
 
-        // ============================================================
-        // 14. ERROR: 'IS' operator syntax
-        // ============================================================
-        // Expectation: Error at '=', expected 'NULL' or 'NOT'. 
-        // (You cannot say 'IS = NULL')
-        "SELECT * FROM products WHERE category IS = NULL;",
 
-        // ============================================================
-        // 15. ERROR: Conflicting ORDER BY direction
-        // ============================================================
-        // Expectation: Error at 'DESC', unexpected token after 'ASC'.
-        "SELECT name FROM students ORDER BY grade ASC DESC;",
+        // --- DEEL 2: RBAC HANDHAVING (De Permissie Test) ---
+        // 3. Een simpele DELETE. 
+        // DOEL: Client mag dit niet. Employee wel.
+        "DELETE FROM logs WHERE severity = 'LOW';",
 
-        // ============================================================
-        // 16. ERROR: Missing Constraint Keyword (PRIMARY KEY)
-        // ============================================================
-        // Expectation: Error at ')', expected 'KEY'.
-        "CREATE TABLE orders ("
-        "    id INT PRIMARY, "  // <--- Missing 'KEY'
-        "    total DECIMAL"
-        ");",
+        // 4. Een DDL commando (Tabel verwijderen).
+        // DOEL: Alleen ADMIN mag dit. Client/Employee worden geweigerd.
+        "DROP TABLE sensitive_data;",
 
-        // ============================================================
-        // 17. ERROR: Duplicate Keyword (DISTINCT)
-        // ============================================================
-        // Expectation: Error at second 'DISTINCT'.
-        "SELECT DISTINCT DISTINCT name FROM users;",
 
-        // ============================================================
-        // 18. ERROR: Dangling Logical Operator
-        // ============================================================
-        // Expectation: Error at ';', expected expression.
-        "SELECT * FROM data WHERE active = 1 AND;",
+        // --- DEEL 3: SECURITY & FIREWALL (De Hacker Test) ---
+        // 5. Classic SQL Injection (Authentication Bypass).
+        // DOEL: Wordt ALTIJD geblokkeerd, ongeacht de rol.
+        "SELECT * FROM users WHERE username = 'admin' OR '1'='1';",
 
-        // ============================================================
-        // 19. ERROR: Missing Alias after AS
-        // ============================================================
-        // Expectation: Error at 'FROM', expected identifier.
-        "SELECT COUNT(*) AS FROM data;", 
+        // 6. Comment Injection (Truncation Attack).
+        // DOEL: Hacker probeert de rest van de query weg te commentariëren.
+        "SELECT * FROM items; -- DROP TABLE everything;",
 
-        // ============================================================
-        // 20. ERROR: Empty Function Arguments (if grammar requires args)
-        // ============================================================
-        // Expectation: Error at ')', MAX usually requires arguments.
-        "SELECT MAX() FROM numbers;" 
+        // 7. UNION based injection (Data Exfiltration).
+        // DOEL: Hacker probeert data uit een andere tabel te stelen.
+        "SELECT name FROM products UNION SELECT password FROM users;",
+
+
+        // --- DEEL 4: DE 'HACKER ADMIN' (De Context Test) ---
+        // 8. Een legitieme Admin actie.
+        // DOEL: Admin mag CREATE gebruiken (Firewall negeert dit veilig).
+        "CREATE TABLE backup_2024 (id INT, data TEXT);"
     };
-    printErrors(lexer, parser, queries);
+
+    // CLIENT (Alleen Lezen)
+    runCheck(tableFile, queries, ROLE_CLIENT);
+
+    // EMPLOYEE (Lezen + Schrijven)
+    runCheck(tableFile, queries, ROLE_EMPLOYEE);
+
+    // ADMIN (Alles)
+    runCheck(tableFile, queries, ROLE_ADMIN);
+
     return 0;
 }

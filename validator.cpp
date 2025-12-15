@@ -1,12 +1,19 @@
 #include "validator.h" 
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <cctype>
-#include <algorithm>
-#include <iomanip>
 
-using namespace std;
+
+/* "De Security Scanner implementeert detectie voor alle SQL Injection vectoren 
+gedocumenteerd door W3Schools (Tautologies, End-of-Line injecties, Stacked Queries) en 
+breidt dit uit met bescherming tegen geavanceerde technieken zoals Time-Based Blind 
+SQLi, Hex-encoding obfuscation en System Variable Fingerprinting*/
+
+const unordered_set<string> dangerous_keywords = {
+    "T_DROP", "T_TRUNCATE", "T_ALTER", "T_INSERT", "T_UPDATE", "T_DELETE", 
+    "T_PROCEDURE", "T_CREATE", "T_BACKUP"
+};
+
+const unordered_set<string> time_based_functions = {
+    "SLEEP", "WAITFOR", "BENCHMARK"
+};
 
 SimpleLexer::SimpleLexer() {
     keywords["ADD"] = "T_ADD"; 
@@ -42,6 +49,7 @@ SimpleLexer::SimpleLexer() {
     keywords["DELETE"] = "T_DELETE";
     keywords["CASCADE"]  = "T_CASCADE";
     keywords["RESTRICT"] = "T_RESTRICT";
+    keywords["DEFERRABLE"] = "T_DEFERRABLE";
     keywords["ACTION"]   = "T_ACTION";
     keywords["NO"]       = "T_NO";
     keywords["DESC"] = "T_DESC";
@@ -63,6 +71,12 @@ SimpleLexer::SimpleLexer() {
     keywords["INNER"] = "T_INNER";
     keywords["INSERT"] = "T_INSERT";
     keywords["INT"] = "T_INT_TYPE";
+    keywords["UUID"] = "T_UUID";
+    keywords["BYTEA"] = "T_BYTEA";
+    keywords["INTERVAL"] = "T_INTERVAL";
+    keywords["GEOMETRY"] = "T_GEOMETRY";
+    keywords["MONEY"] = "T_MONEY";
+    keywords["SMALLINT"] = "T_SMALLINT";
     keywords["INTEGER"] = "T_INTEGER";
     keywords["INTERSECT"] = "T_INTERSECT";
     keywords["INTO"] = "T_INTO";
@@ -73,6 +87,7 @@ SimpleLexer::SimpleLexer() {
     keywords["LIKE"] = "T_LIKE";
     keywords["MAX"] = "T_MAX";
     keywords["MIN"] = "T_MIN";
+    keywords["MINUS"] = "T_MINUS_KEYWORD";
     keywords["NATURAL"] = "T_NATURAL";
     keywords["NOT"] = "T_NOT";
     keywords["NULL"] = "T_NULL";
@@ -141,27 +156,59 @@ vector<Token> SimpleLexer::tokenize(string input) {
     int i = 0;
     while (i < input.length()) {
         char c = input[i];
+        if (isspace(c)) { i++; continue; }
 
-        // 1. Skip Whitespace
-        if (isspace(c)) {
-            i++;
+        if (c == '/' && i + 1 < input.length() && input[i+1] == '*') {
+            i += 2; 
+            while (i < input.length()) {
+                if (input[i] == '*' && i + 1 < input.length() && input[i+1] == '/') {
+                    i += 2; 
+                    break;
+                }
+                i++;
+            }
+            continue; 
+        }
+
+        if (c == '-' && i + 1 < input.length() && input[i+1] == '-') {
+            while (i < input.length() && input[i] != '\n') {
+                i++; 
+            }
+            continue; 
+        }
+
+       
+        if (c == '"') {
+            string val;
+            i++; 
+            while (i < input.length()) {
+                if (input[i] == '"') {
+                    if (i + 1 < input.length() && input[i+1] == '"') {
+                        val += '"';
+                        i += 2;
+                    } else {
+                        i++;
+                        break;
+                    }
+                } else {
+                    val += input[i++];
+                }
+            }
+            tokens.push_back({"T_ID", val}); 
             continue;
         }
 
-        // ==========================================
-        // FIX 1: HEXADECIMAL SUPPORT (For Query 1)
-        // ==========================================
+    
         if (c == '0' && i + 1 < input.length() && (input[i+1] == 'x' || input[i+1] == 'X')) {
             string hexStr = "0x";
-            i += 2; // Skip '0x'
+            i += 2; 
             while (i < input.length() && isxdigit(input[i])) {
                 hexStr += input[i++];
             }
-            tokens.push_back({"T_INT", hexStr}); // Treat Hex as INT
+            tokens.push_back({"T_INT", hexStr});
             continue;
         }
 
-        // 2. Standard Numbers
         if (isdigit(c)) {
             string num;
             bool isFloat = false;
@@ -173,23 +220,20 @@ vector<Token> SimpleLexer::tokenize(string input) {
             continue;
         }
 
-        // 3. Keywords & Identifiers (with PRIMARY/FOREIGN KEY Lookahead)
-        if (isalpha(c) || c == '_') {
+
+        if (isalpha(c) || c == '_' || c == '@') { 
             string word;
-            while (i < input.length() && (isalnum(input[i]) || input[i] == '_')) {
+            while (i < input.length() && (isalnum(input[i]) || input[i] == '_' || input[i] == '@')) {
                 word += input[i++];
             }
             
             string upper = word;
             transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
 
-            // --- HANDLING COMPOSITE TOKENS (PRIMARY KEY / FOREIGN KEY) ---
-            if (upper == "PRIMARY" || upper == "FOREIGN") {
-                int tempI = i; 
-                // Peek forward past whitespace
+            if (upper == "NOT") {
+                int tempI = i;
                 while (tempI < input.length() && isspace(input[tempI])) tempI++;
 
-                // Read next word
                 if (tempI < input.length() && (isalpha(input[tempI]) || input[tempI] == '_')) {
                     string nextWord;
                     while (tempI < input.length() && (isalnum(input[tempI]) || input[tempI] == '_')) {
@@ -198,20 +242,64 @@ vector<Token> SimpleLexer::tokenize(string input) {
                     string nextUpper = nextWord;
                     transform(nextUpper.begin(), nextUpper.end(), nextUpper.begin(), ::toupper);
 
-                    // If we found "KEY", merge them into one token
-                    if (nextUpper == "KEY") {
-                        i = tempI; // Advance real cursor
-                        if (upper == "PRIMARY") {
-                            tokens.push_back({"T_PK", "PRIMARY KEY"});
-                        } else {
-                            tokens.push_back({"T_FK", "FOREIGN KEY"});
-                        }
-                        continue; // Successfully handled composite token
+                    if (nextUpper == "IN") {
+                        tokens.push_back({"T_NOT_IN", "NOT IN"});
+                        i = tempI; 
+                        continue;
+                    } 
+                    else if (nextUpper == "LIKE") {
+                        tokens.push_back({"T_NOT_LIKE", "NOT LIKE"});
+                        i = tempI;
+                        continue;
+                    } 
+                    else if (nextUpper == "NULL") {
+                        tokens.push_back({"T_NOT_NULL", "NOT NULL"});
+                        i = tempI;
+                        continue;
                     }
                 }
             }
 
-            // Standard Map Lookup
+            if (upper == "PRIMARY") {
+                int tempI = i; 
+                while (tempI < input.length() && isspace(input[tempI])) tempI++;
+
+                if (tempI < input.length() && (isalpha(input[tempI]) || input[tempI] == '_')) {
+                    string nextWord;
+                    while (tempI < input.length() && (isalnum(input[tempI]) || input[tempI] == '_')) {
+                        nextWord += input[tempI++];
+                    }
+                    string nextUpper = nextWord;
+                    transform(nextUpper.begin(), nextUpper.end(), nextUpper.begin(), ::toupper);
+
+                    if (nextUpper == "KEY") {
+                        tokens.push_back({"T_PK", "PRIMARY KEY"});
+                        i = tempI; 
+                        continue; 
+                    }
+                }
+            }
+
+            if (upper == "FOREIGN") {
+                int tempI = i; 
+                while (tempI < input.length() && isspace(input[tempI])) tempI++;
+
+                if (tempI < input.length() && (isalpha(input[tempI]) || input[tempI] == '_')) {
+                    string nextWord;
+                    while (tempI < input.length() && (isalnum(input[tempI]) || input[tempI] == '_')) {
+                        nextWord += input[tempI++];
+                    }
+                    string nextUpper = nextWord;
+                    transform(nextUpper.begin(), nextUpper.end(), nextUpper.begin(), ::toupper);
+
+                    if (nextUpper == "KEY") {
+                        tokens.push_back({"T_FK", "FOREIGN KEY"});
+                        i = tempI; 
+                        continue; 
+                    }
+                }
+            }
+
             if (keywords.count(upper)) {
                 tokens.push_back({keywords[upper], word});
             } else {
@@ -219,25 +307,19 @@ vector<Token> SimpleLexer::tokenize(string input) {
             }
             continue;
         }
-
-        // ==========================================
-        // FIX 2: ESCAPED STRING SUPPORT (For Query 10)
-        // ==========================================
+      
         if (c == '\'') {
             string s;
-            i++; // Skip opening quote
+            i++;
             while (i < input.length()) {
-                // Check for escaped quote: ''
                 if (input[i] == '\'' && i + 1 < input.length() && input[i+1] == '\'') {
-                    s += "'";  // Add actual single quote
-                    i += 2;    // Skip both quote chars
+                    s += "'";  
+                    i += 2;    
                 } 
-                // Check for closing quote
                 else if (input[i] == '\'') {
-                    i++; // Skip closing quote
+                    i++; 
                     break;
                 } 
-                // Normal character
                 else {
                     s += input[i++];
                 }
@@ -246,7 +328,6 @@ vector<Token> SimpleLexer::tokenize(string input) {
             continue;
         }
 
-        // 5. Symbols
         if (symbols.count(c) || c == '!' || c == '<' || c == '>' || c == '|') {
             string op(1, c);
             bool handled = false;
@@ -282,11 +363,53 @@ vector<Token> SimpleLexer::tokenize(string input) {
         i++; 
     }
     tokens.push_back({"T_EOF", ""});
-
     tokens.push_back({"$", ""}); 
     return tokens;
 }
 
+string RBACManager::getRoleName(UserRole role) {
+    switch(role) {
+        case ROLE_CLIENT:   return "CLIENT [R--] (Select Only)";
+        case ROLE_EMPLOYEE: return "EMPLOYEE [RW-] (Select, Insert, Update, Delete)";
+        case ROLE_ADMIN:    return "ADMIN [RWX] (Full Control / DDL)";
+        default:            return "UNKNOWN";
+    }
+}
+
+bool RBACManager::hasPermission(UserRole role, const vector<Token>& tokens) {
+    if (tokens.empty()) return false;
+
+    string command = "";
+    for(const auto& t : tokens) {
+        if (t.type != "T_EOF" && t.type != "$") {
+            command = t.type;
+            break;
+        }
+    }
+    
+    bool isRead = (command == "T_SELECT" || command == "T_WITH" || command == "T_VALUES");
+    
+    bool isWrite = (command == "T_INSERT" || command == "T_UPDATE" || command == "T_DELETE");
+    
+    bool isAdmin = (command == "T_DROP" || command == "T_CREATE" || command == "T_ALTER" || 
+                    command == "T_TRUNCATE" || command == "T_BACKUP" || command == "T_PROCEDURE");
+
+    if (role == ROLE_ADMIN) {
+        return true; 
+    }
+
+    if (role == ROLE_EMPLOYEE) {
+        if (isRead || isWrite) return true;
+        if (isAdmin) return false;
+    }
+
+    if (role == ROLE_CLIENT) {
+        if (isRead) return true;
+        if (isWrite || isAdmin) return false;
+    }
+
+    return false;
+}
 
 LALRParser::LALRParser(string filename) {
     ifstream f(filename);
@@ -297,7 +420,6 @@ LALRParser::LALRParser(string filename) {
     json j;
     f >> j;
 
-    // Load Action Table
     for (auto& [stateStr, actions] : j["action_table"].items()) {
         int state = stoi(stateStr);
         for (auto& [sym, act] : actions.items()) {
@@ -313,7 +435,6 @@ LALRParser::LALRParser(string filename) {
         }
     }
 
-    // Load Goto Table
     for (auto& [stateStr, gotos] : j["goto_table"].items()) {
         int state = stoi(stateStr);
         for (auto& [nonTerm, nextState] : gotos.items()) {
@@ -321,7 +442,6 @@ LALRParser::LALRParser(string filename) {
         }
     }
 }
-
 
 bool LALRParser::parse(vector<Token>& tokens) {
     stack<int> stateStack;
@@ -382,8 +502,7 @@ bool LALRParser::parse(vector<Token>& tokens) {
                 continue;
             }
         }
-
-       
+   
         ParserAction act = actionTable[currentState][sym];
 
         if (act.type == ParserAction::SHIFT) {
@@ -444,7 +563,162 @@ void printErrors(SimpleLexer& lexer, LALRParser& parser, const vector<string>& q
 
     cout << "---------------------------------------------------\n";
     cout << "Final Script Result: " << (result ? "SUCCESS" : "ERRORS DETECTED") << endl;
-    cout << "================================\n";
-    
+    cout << "================================\n";   
 }
 
+bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole role) {
+    cout << "   [Security Scan] Scanning for attack patterns (Optimized for broad CFG)..." << endl;
+    
+    bool dangerous = false;
+
+    if (query.find("--") != string::npos || query.find("/*") != string::npos) {
+        cout << "   --> \033[1;31m[ALERT]\033[0m Suspicious Comment found ('--' or '/*'). Possible truncation attack." << endl;
+        dangerous = true;
+    }
+    if (query.find("information_schema") != string::npos || 
+        query.find("pg_catalog") != string::npos) {
+        cout << "   --> \033[1;31m[ALERT]\033[0m System Schema Access detected. Risk of enumeration." << endl;
+        dangerous = true;
+    }
+
+    vector<Token> tokens = lexer.tokenize(query);
+    
+    for (size_t i = 0; i < tokens.size(); i++) {
+        string type = tokens[i].type;
+        string value = tokens[i].value;
+
+        if (i + 2 < tokens.size()) {
+            string t1 = tokens[i].type;
+            string t2 = tokens[i+1].type;
+            string t3 = tokens[i+2].type;
+
+            bool isLiteral1 = (t1 == "T_INT" || t1 == "T_STRING");
+            bool isLiteral2 = (t3 == "T_INT" || t3 == "T_STRING");
+
+            if (isLiteral1 && t2 == "T_EQ" && isLiteral2) {
+                if (tokens[i].value == tokens[i+2].value) {
+                     cout << "   --> \033[1;31m[ALERT]\033[0m Tautology detected ('" 
+                          << tokens[i].value << "=" << tokens[i+2].value 
+                          << "'). Possible authentication bypass." << endl;
+                     dangerous = true;
+                }
+            }
+        }
+
+        if (type == "T_PCOMMA") {
+            if (i + 1 < tokens.size() && tokens[i+1].type != "T_EOF" && tokens[i+1].type != "$") {
+                cout << "   --> \033[1;31m[ALERT]\033[0m Stacked Query detected (';' followed by command). Possible command injection." << endl;
+                dangerous = true;
+            }
+        }
+
+        if (type == "T_OR" && i + 1 < tokens.size() && tokens[i+1].type == "T_NOT") {
+            cout << "   --> \033[1;31m[ALERT]\033[0m Logical Negation ('OR NOT') detected. Possible filter bypass." << endl;
+            dangerous = true;
+        }
+
+        if (dangerous_keywords.count(type)) {
+            if (role == ROLE_ADMIN) {
+                continue; 
+            } else {
+                cout << "   --> \033[1;31m[ALERT]\033[0m High-risk DDL/DML keyword (" << value << ") detected. Policy Violation." << endl;
+                dangerous = true;
+            }
+        }
+        
+        if (type == "T_ID") {
+            string upperValue = value;
+            transform(upperValue.begin(), upperValue.end(), upperValue.begin(), ::toupper);
+            
+            if (time_based_functions.count(upperValue)) {
+                cout << "   --> \033[1;31m[ALERT]\033[0m Time-Based Function (" << upperValue << ") detected. DOS/Stealth risk." << endl;
+                dangerous = true;
+            }
+
+            if (value.size() >= 2 && value.substr(0, 2) == "@@") {
+                cout << "   --> \033[1;31m[ALERT]\033[0m System Variable / Version fingerprinting detected (" << value << ")." << endl;
+                dangerous = true;
+            }
+        }
+
+        if (type == "T_INT" || type == "T_STRING") {
+            if (value.size() > 2 && (value.substr(0, 2) == "0x" || value.substr(0, 2) == "0X")) {
+                cout << "   --> \033[1;31m[ALERT]\033[0m Hexadecimal Literal detected. Possible payload obfuscation." << endl;
+                dangerous = true;
+            }
+        }
+        
+        if (type == "T_UNION") {
+            cout << "   --> \033[1;31m[ALERT]\033[0m 'UNION' detected. Possible data exfiltration." << endl;
+            dangerous = true;
+        }
+    }
+
+    if (!dangerous) {
+        cout << "   [Security Scan] No obvious signatures found." << endl;
+    }
+    return dangerous;
+}
+
+void ensureParseTable(const string& grammarFile, const string& tableFile) {
+    bool needToGenerate = true;
+
+    if (fs::exists(tableFile) && fs::exists(grammarFile)) {
+        auto grammarTime = fs::last_write_time(grammarFile);
+        auto tableTime = fs::last_write_time(tableFile);
+
+        if (tableTime > grammarTime) {
+            cout << "[System] Parse table is up to date. Skipping generation.\n";
+            needToGenerate = false;
+        } else {
+            cout << "[System] Grammar file has changed. Regenerating parse table...\n";
+        }
+    } else {
+        cout << "[System] Parse table not found. Generating...\n";
+    }
+
+    if (needToGenerate) {
+        CFG cfg(grammarFile);
+        cfg.toStates();      
+        cfg.saveTableToJSON(tableFile);
+    }
+}
+
+void runCheck(const string& tableFile, const vector<string>& queries, UserRole role) {
+    SimpleLexer lexer;
+    LALRParser parser(tableFile);
+    SecurityAnalyzer security;
+    RBACManager rbac;
+
+    cout << "\n=======================================================" << endl;
+    cout << "   USER ROLE: \033[1;36m" << rbac.getRoleName(role) << "\033[0m" << endl;
+    cout << "=======================================================" << endl;
+
+    int count = 1;
+    for (const string& q : queries) {
+        cout << "\nQUERY " << count++ << ": " << q << endl;
+        
+        vector<Token> tokens = lexer.tokenize(q);
+
+        if (!rbac.hasPermission(role, tokens)) {
+            cout << ">>> ACTION: \033[1;31mDENIED (INSUFFICIENT PRIVILEGES)\033[0m" << endl;
+            continue; 
+        }
+
+        bool isRisk = security.isDangerous(lexer, q, role);
+        
+        if (isRisk) {
+            cout << ">>> ACTION: \033[1;31mBLOCKED BY FIREWALL (Security Violation)\033[0m" << endl;
+            cout << "-------------------------------------------------------" << endl;
+            continue; 
+        } 
+
+        cout << ">>> ACTION: \033[1;32mALLOWED (Proceeding to Execution)\033[0m" << endl;
+        bool validSyntax = parser.parse(tokens);
+
+        cout << "\n>>> FINAL REPORT:" << endl;
+        cout << "    Access:          GRANTED" << endl;
+        cout << "    Security Status: CLEAN" << endl;
+        cout << "    Syntax Status:   " << (validSyntax ? "VALID SQL" : "INVALID SQL") << endl;
+    }
+}

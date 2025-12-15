@@ -1,57 +1,64 @@
-//
-// Created by lasse on 12/12/2025.
-//
 #ifndef VALIDATOR_H
 #define VALIDATOR_H
 
-#include <iostream>
-#include <vector>
-#include <string>
-#include <unordered_map>
-#include <stack>
-#include "json.hpp" 
+#include "common.h"
+#include "LALR.h"
+#include <unordered_set>
 
-using json = nlohmann::json;
-using namespace std;
+
+enum UserRole {
+    ROLE_CLIENT,    // R   (Read Only)
+    ROLE_EMPLOYEE,  // RW  (Read + Write Data)
+    ROLE_ADMIN      // RWX (Read + Write + Execute/DDL)
+};
 
 struct Token {
     string type;  
     string value; 
 };
 
-struct ParserProduction {
-    std::string head;
-    std::vector<std::string> body;
-    
-    bool operator==(const ParserProduction& other) const {
-        return head == other.head && body == other.body;
-    }
-};
-
 struct ParserAction {
     enum Type { SHIFT, REDUCE, ACCEPT, ERROR } type;
     int state; 
-    string lhs;  
+    string lhs;   
     int rhsSize; 
 };
 
 class SimpleLexer {
     unordered_map<string, string> keywords;
     unordered_map<char, string> symbols;
-
 public:
     SimpleLexer();                        
     vector<Token> tokenize(string input); 
 };
 
+class RBACManager {
+public:
+    string getRoleName(UserRole role);
+    bool hasPermission(UserRole role, const vector<Token>& tokens);
+};
+
 class LALRParser {
     unordered_map<int, unordered_map<string, ParserAction>> actionTable;
     unordered_map<int, unordered_map<string, int>> gotoTable;
-
 public:
     LALRParser(string filename);     
     bool parse(vector<Token>& tokens);    
 };
-void printErrors(SimpleLexer& lexer, LALRParser& parser, const vector<string>& queries);
+
+class SecurityAnalyzer {
+public:
+    const unordered_set<string> dangerous_keywords = {
+        "T_DROP", "T_TRUNCATE", "T_ALTER", "T_PROCEDURE", "T_CREATE", "T_BACKUP"
+    };
+    const unordered_set<string> time_based_functions = {
+        "SLEEP", "WAITFOR", "BENCHMARK"
+    };
+
+    bool isDangerous(SimpleLexer& lexer, string query, UserRole role);
+};
+
+void ensureParseTable(const string& grammarFile, const string& tableFile);
+void runCheck(const string& tableFile, const vector<string>& queries, UserRole role);
 
 #endif

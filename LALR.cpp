@@ -2,23 +2,21 @@
 #include "json.hpp"
 
 
-using json = nlohmann::json;
 
-
-CFG::CFG(const std::string &filename) {
-    std::ifstream input(filename);
+CFG::CFG(const string &filename) {
+    ifstream input(filename);
     json j;
     input >> j;
     
     for (const auto& variable : j["Variables"]) {
-        variables.insert(variable.get<std::string>());
+        variables.insert(variable.get<string>());
     }
     for (const auto& terminal : j["Terminals"]) {
-        terminals.insert(terminal.get<std::string>());
+        terminals.insert(terminal.get<string>());
     }
     Start = j["Start"];
     for (const auto& production : j["Productions"]) {
-        productions.push_back({production["head"], production["body"].get<std::vector<std::string>>()});
+        productions.push_back({production["head"], production["body"].get<vector<string>>()});
     }
     
     nullableSymbols = getNullable();
@@ -26,8 +24,8 @@ CFG::CFG(const std::string &filename) {
 }
 
 
-std::unordered_map<std::string, std::unordered_set<std::string>> CFG::computeFirstSets() {
-    std::unordered_map<std::string, std::unordered_set<std::string>> first;
+unordered_map<string, unordered_set<string>> CFG::computeFirstSets() {
+    unordered_map<string, unordered_set<string>> first;
     bool changed = true;
 
     for (const auto& t : terminals) first[t].insert(t);
@@ -36,10 +34,10 @@ std::unordered_map<std::string, std::unordered_set<std::string>> CFG::computeFir
     while (changed) {
         changed = false;
         for (const Production& p : productions) {
-            const std::string& head = p.head;
+            const string& head = p.head;
             size_t old_size = first[head].size();
             
-            for (const std::string& sym : p.body) {
+            for (const string& sym : p.body) {
                 if (terminals.count(sym)) {
                     first[head].insert(sym);
                     break;
@@ -57,14 +55,14 @@ std::unordered_map<std::string, std::unordered_set<std::string>> CFG::computeFir
     return first;
 }
 
-std::unordered_set<std::string> CFG::getNullable() {
-    std::unordered_set<std::string> nullable = {};
+unordered_set<string> CFG::getNullable() {
+    unordered_set<string> nullable = {};
     bool changed = true;
     while (changed) {
         changed = false;
         for (const Production& production : productions) {
             bool is_nullable = true;
-            for (const std::string& s : production.body) {
+            for (const string& s : production.body) {
                 if (terminals.count(s) || (variables.count(s) && !nullable.count(s))) {
                     is_nullable = false;
                     break;
@@ -85,7 +83,7 @@ void CFG::closure(State &state) {
         changed = false;
         
 
-        std::vector<StateProduction> current_items(state.begin(), state.end());
+        vector<StateProduction> current_items(state.begin(), state.end());
         
         for (const StateProduction &prod : current_items) {
             
@@ -98,25 +96,25 @@ void CFG::closure(State &state) {
             }
 
             if (dot_pos != -1 && dot_pos + 1 < prod.body.size()) {
-                const std::string &nextSymbol = prod.body[dot_pos + 1];
+                const string &nextSymbol = prod.body[dot_pos + 1];
                 
                 if (variables.count(nextSymbol)) {
                     
-                    std::vector<std::string> beta_vector;
+                    vector<string> beta_vector;
                     if (dot_pos + 2 < prod.body.size()) {
                         beta_vector.assign(prod.body.begin() + dot_pos + 2, prod.body.end());
                     }
                     
-                    std::unordered_set<std::string> LA;
+                    unordered_set<string> LA;
                     bool beta_is_nullable = true;
 
-                    for (const std::string& sym : beta_vector) {
+                    for (const string& sym : beta_vector) {
                         if (terminals.count(sym)) {
                             LA.insert(sym);
                             beta_is_nullable = false;
                             break;
                         } else if (variables.count(sym)) {
-                            for (const std::string& term : firstSets[sym]) {
+                            for (const string& term : firstSets[sym]) {
                                 if (term != "ε") LA.insert(term);
                             }
                             if (!nullableSymbols.count(sym)) {
@@ -131,13 +129,13 @@ void CFG::closure(State &state) {
 
                     for (const Production &p : productions) {
                         if (p.head == nextSymbol) {
-                            std::vector<std::string> newBody = {"."};
+                            vector<string> newBody = {"."};
                             newBody.insert(newBody.end(), p.body.begin(), p.body.end());
                             StateProduction newProd{p.head, newBody, LA};
                             
                             auto it = state.find(newProd); 
                             if (it == state.end()) {
-                                state.insert(std::move(newProd));
+                                state.insert(move(newProd));
                                 changed = true;
                             } else {
                                 StateProduction existingProd = *it;
@@ -146,7 +144,7 @@ void CFG::closure(State &state) {
                                 
                                 if (existingProd.lookahead.size() > oldSize) {
                                     state.erase(it);
-                                    state.insert(std::move(existingProd));
+                                    state.insert(move(existingProd));
                                     changed = true;
                                 }
                             }
@@ -195,14 +193,14 @@ bool CFG::merge(State &s1, const State &s2) {
 }
 
 void CFG::toStates() {
-    std::unordered_map<State, unsigned int, StateHash> kernelIndexMap;
+    unordered_map<State, unsigned int, StateHash> kernelIndexMap;
 
-    std::string startHead = Start + "'";
-    std::vector<std::string> startBody = {"." , Start};
-    std::unordered_set<std::string> startLookahead = {"$"};
+    string startHead = Start + "'";
+    vector<string> startBody = {"." , Start};
+    unordered_set<string> startLookahead = {"$"};
     
-    std::vector<State> states;
-    std::vector<std::tuple<unsigned int, std::string, unsigned int>> transitions = {};
+    vector<State> states;
+    vector<tuple<unsigned int, string, unsigned int>> transitions = {};
 
     State initialState = {{ StateProduction{startHead, startBody, startLookahead}}};
     closure(initialState);
@@ -210,27 +208,27 @@ void CFG::toStates() {
     kernelIndexMap.emplace(initialState, 0);
 
     for (unsigned int i = 0; i < states.size(); i++) {
-        std::unordered_set<std::string> transitionSymbols = {}; 
+        unordered_set<string> transitionSymbols = {}; 
         
         for (const StateProduction& prod : states[i]) {
             const auto& b = prod.body;
             for (size_t p = 0; p < b.size() - 1; p++) {
                 if (b[p] == ".") {
-                    std::string sym = b[p+1];
+                    string sym = b[p+1];
                     if (sym != "ε") transitionSymbols.insert(sym);
                     break;
                 }
             }
         }
 
-        for (const std::string& symbol : transitionSymbols) {
+        for (const string& symbol : transitionSymbols) {
             State gotoState;
             for (const StateProduction& prod : states[i]) {
                 const auto& b = prod.body;
                 for (size_t p = 0; p < b.size() - 1; p++) {
                     if (b[p] == "." && b[p+1] == symbol) {
-                        std::vector<std::string> newBody = b;
-                        std::swap(newBody[p], newBody[p+1]);
+                        vector<string> newBody = b;
+                        swap(newBody[p], newBody[p+1]);
                         gotoState.insert(StateProduction(prod.head, newBody, prod.lookahead));
                         break;
                     }
@@ -258,17 +256,17 @@ void CFG::toStates() {
     while (changed) {
         changed = false;
         for (const auto& trans : transitions) {
-            unsigned int fromIdx = std::get<0>(trans);
-            std::string symbol   = std::get<1>(trans);
-            unsigned int toIdx   = std::get<2>(trans);
+            unsigned int fromIdx = get<0>(trans);
+            string symbol   = get<1>(trans);
+            unsigned int toIdx   = get<2>(trans);
 
             State tempGoto;
             for (const StateProduction& prod : states[fromIdx]) {
                 const auto& b = prod.body;
                 for (size_t p = 0; p < b.size() - 1; p++) {
                     if (b[p] == "." && b[p+1] == symbol) {
-                        std::vector<std::string> newBody = b;
-                        std::swap(newBody[p], newBody[p+1]);
+                        vector<string> newBody = b;
+                        swap(newBody[p], newBody[p+1]);
                         tempGoto.insert(StateProduction(prod.head, newBody, prod.lookahead));
                         break;
                     }
@@ -281,13 +279,13 @@ void CFG::toStates() {
         }
     }
 
-    std::vector<std::set<int>> LALR_States;
-    std::vector<bool> stateHandled(states.size(), false);
+    vector<set<int>> LALR_States;
+    vector<bool> stateHandled(states.size(), false);
 
     for (int i = 0; i < states.size(); i++) {
         if (stateHandled[i]) continue;
         
-        std::set<int> currentGroup;
+        set<int> currentGroup;
         currentGroup.insert(i);
         stateHandled[i] = true;
 
@@ -300,10 +298,10 @@ void CFG::toStates() {
         LALR_States.push_back(currentGroup);
     }
 
-    std::vector<namedState> FinalStates = {};
-    for (const std::set<int>& s : LALR_States) {
+    vector<namedState> FinalStates = {};
+    for (const set<int>& s : LALR_States) {
         State newState;
-        std::string name = "I";
+        string name = "I";
         bool first = true;
         
         for (int i : s) {
@@ -313,17 +311,17 @@ void CFG::toStates() {
             } else {
                 merge(newState, states[i]);
             }
-            name += std::to_string(i);
+            name += to_string(i);
         }
         FinalStates.push_back(namedState(name, newState));
     }
 
-    std::unordered_map<std::string, unsigned int> nameToIndex;
+    unordered_map<string, unsigned int> nameToIndex;
     for (unsigned int i = 0; i < FinalStates.size(); i++) {
         nameToIndex[FinalStates[i].name] = i;
     }
 
-    std::vector<int> oldToNewIndex(states.size());
+    vector<int> oldToNewIndex(states.size());
     for(int i=0; i<states.size(); ++i) {
         for(int grpIdx = 0; grpIdx < LALR_States.size(); ++grpIdx) {
             if(LALR_States[grpIdx].count(i)) {
@@ -337,9 +335,9 @@ void CFG::toStates() {
     ACTION.assign(FinalStates.size(), {});
 
     for (const auto& transition : transitions) {
-        unsigned int fromOld = std::get<0>(transition);
-        std::string symbol   = std::get<1>(transition);
-        unsigned int toOld   = std::get<2>(transition);
+        unsigned int fromOld = get<0>(transition);
+        string symbol   = get<1>(transition);
+        unsigned int toOld   = get<2>(transition);
 
         unsigned int fromNew = oldToNewIndex[fromOld];
         unsigned int toNew   = oldToNewIndex[toOld];
@@ -358,7 +356,7 @@ void CFG::toStates() {
             if (!production.body.empty() && production.body.back() == ".") {
                 
                 if (production.head == startHead) {
-                    for (const std::string& s : production.lookahead) {
+                    for (const string& s : production.lookahead) {
                         if (s == "$") {
                             ACTION[i][s] = Action{Action::ACCEPT};
                         }
@@ -366,7 +364,7 @@ void CFG::toStates() {
                     continue; 
                 }
 
-                std::vector<std::string> bodyNoDot(production.body.begin(), production.body.end()-1);
+                vector<string> bodyNoDot(production.body.begin(), production.body.end()-1);
                 Production originalProd;
                 bool found = false;
                 
@@ -379,7 +377,7 @@ void CFG::toStates() {
                 }
                 
                 if (found) {
-                    for (const std::string& s : production.lookahead) {
+                    for (const string& s : production.lookahead) {
                         bool skip = false;
 
                         if (ACTION[i].count(s)) {
@@ -390,7 +388,7 @@ void CFG::toStates() {
                             } 
                             else if (existing.type == Action::REDUCE) {
                                 if (existing.prod.head != originalProd.head || existing.prod.body != originalProd.body) {
-                                    std::cerr << "CRITICAL WARNING: Reduce/Reduce conflict in State " << i 
+                                    cerr << "CRITICAL WARNING: Reduce/Reduce conflict in State " << i 
                                               << " on symbol '" << s << "'.\n"
                                               << "  Existing: " << existing.prod.head << " -> ...\n"
                                               << "  New:      " << originalProd.head << " -> ...\n";
@@ -411,33 +409,33 @@ void CFG::toStates() {
         }
     }
 
-    std::cout << "===== ACTION TABLE =====\n\n";
+    cout << "===== ACTION TABLE =====\n\n";
     for (int state = 0; state < ACTION.size(); state++) {
-        std::cout << "State " << state << ":\n";
+        cout << "State " << state << ":\n";
         if (ACTION[state].empty()) {
-            std::cout << "   (no actions)\n\n";
+            cout << "   (no actions)\n\n";
             continue;
         }
         for (const auto& [symbol, act] : ACTION[state]) {
-            std::cout << "   ACTION[" << state << "][" << symbol << "] = ";
+            cout << "   ACTION[" << state << "][" << symbol << "] = ";
             switch (act.type) {
-                case Action::SHIFT:  std::cout << "shift " << act.nexState; break;
-                case Action::REDUCE: std::cout << "reduce " << act.prod.head << " -> ..."; break;
-                case Action::ACCEPT: std::cout << "accept"; break;
-                default: std::cout << "error"; break;
+                case Action::SHIFT:  cout << "shift " << act.nexState; break;
+                case Action::REDUCE: cout << "reduce " << act.prod.head << " -> ..."; break;
+                case Action::ACCEPT: cout << "accept"; break;
+                default: cout << "error"; break;
             }
-            std::cout << "\n";
+            cout << "\n";
         }
-        std::cout << "\n";
+        cout << "\n";
     }
 }
 
-void CFG::saveTableToJSON(const std::string& filename) {
+void CFG::saveTableToJSON(const string& filename) {
     json root;
     
     for (int i = 0; i < ACTION.size(); i++) {
         for (auto const& [symbol, action] : ACTION[i]) {
-            std::string stateStr = std::to_string(i);
+            string stateStr = to_string(i);
             
             json actionObj;
             
@@ -460,12 +458,12 @@ void CFG::saveTableToJSON(const std::string& filename) {
 
     for (int i = 0; i < GOTO.size(); i++) {
         for (auto const& [nonTerminal, nextState] : GOTO[i]) {
-            std::string stateStr = std::to_string(i);
+            string stateStr = to_string(i);
             root["goto_table"][stateStr][nonTerminal] = nextState;
         }
     }
 
-    std::ofstream file(filename);
+    ofstream file(filename);
     file << root.dump(4); 
-    std::cout << "Parse table saved to " << filename << std::endl;
+    cout << "Parse table saved to " << filename << endl;
 }
