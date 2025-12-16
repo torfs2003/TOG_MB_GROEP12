@@ -19,18 +19,17 @@
     "delete_statement", "ddl_statement", "truncate_stmt", "create_stmt", 
     "drop_stmt", "alter_stmt", "alter_action_list", "alter_action", "backup_statement", "def_list", 
     "col_def", "data_type", "base_type", "opt_type_params", "opt_constraints", 
-    "constraint", "table_constraint", "opt_if_exists",
-    "uid", "opt_pcomma", "opt_ref_actions", "ref_action_list", "ref_action", "action_rule",
-    "opt_limit_clause"
+    "constraint", "table_constraint", "opt_if_exists", "opt_limit_clause",
+    "uid", "opt_pcomma", "opt_ref_actions", "ref_action_list", "ref_action", "action_rule"
   ],
   "Terminals": [
     "T_EOF", "T_PCOMMA", "T_WITH", "T_COMMA", "T_ID", "T_AS", 
     "T_LPAREN", "T_RPAREN", "T_OR", "T_AND", "T_NOT", "T_IS", "T_NULL", 
     "T_BETWEEN", "T_IN", "T_EXISTS", "T_ADD", "T_MINUS", "T_MINUS_KEYWORD", "T_STAR", "T_DIVIDE", 
     "T_PERCENT", "T_DOT", "T_CASCADE", "T_RESTRICT", "T_ACTION", "T_NO",
-    "T_INT", "T_FLOAT", "T_STRING", "T_BOOLEAN", "T_DATE_LIT", 
+    "T_INT", "T_FLOAT", "T_STRING", "T_BOOLEAN", "T_DATE_LIT",
     "T_INT_TYPE", "T_FLOAT_TYPE", "T_STRING_TYPE", "T_BOOLEAN_TYPE", 
-    "T_DEFAULT", "T_UNDERSCORE", "T_EQ", "T_NEQ", "T_LT", 
+    "T_DEFAULT", "T_UNDERSCORE", "T_EQ", "T_NEQ", "T_LT", "T_PLACEHOLDER",
     "T_GT", "T_LTE", "T_GTE", "T_LIKE", "T_NOT_LIKE", "T_NOT_IN", "T_NOT_NULL", "T_AMP", "T_PIPE", "T_CARET", 
     "T_CONCAT_OP", "T_ALL", "T_ANY", "T_SOME", "T_COUNT", "T_SUM", "T_AVG", 
     "T_MIN", "T_MAX", "T_OVER", "T_ROW_NUMBER", "T_RANK", "T_PARTITION", 
@@ -51,6 +50,32 @@
     "T_GRANT", "T_REVOKE", "T_TO", "T_WAITFOR", "T_DELAY", "T_TIME_LITERAL",
     "T_HEX", "T_LIMIT", "T_OFFSET", "T_XOR", "T_SLEEP", "T_BENCHMARK"
   ],
+  "Precedence": {
+    "T_OR": { "level": 1, "assoc": "LEFT" },
+    "T_XOR": { "level": 1, "assoc": "LEFT" },
+    "T_AND": { "level": 2, "assoc": "LEFT" },
+    "T_NOT": { "level": 3, "assoc": "RIGHT" },
+    "T_EQ": { "level": 4, "assoc": "NONE" },
+    "T_NEQ": { "level": 4, "assoc": "NONE" },
+    "T_LIKE": { "level": 4, "assoc": "NONE" },
+    "T_NOT_LIKE": { "level": 4, "assoc": "NONE" },
+    "T_IN": { "level": 4, "assoc": "NONE" },
+    "T_NOT_IN": { "level": 4, "assoc": "NONE" },
+    "T_IS": { "level": 4, "assoc": "NONE" }, 
+    "T_LT": { "level": 4, "assoc": "NONE" },
+    "T_GT": { "level": 4, "assoc": "NONE" },
+    "T_LTE": { "level": 4, "assoc": "NONE" },
+    "T_GTE": { "level": 4, "assoc": "NONE" },
+    "T_PIPE": { "level": 5, "assoc": "LEFT" },
+    "T_CONCAT_OP": { "level": 5, "assoc": "LEFT" },
+    "T_AMP": { "level": 5, "assoc": "LEFT" },
+    "T_CARET": { "level": 5, "assoc": "LEFT" },
+    "T_ADD": { "level": 6, "assoc": "LEFT" },
+    "T_MINUS": { "level": 6, "assoc": "LEFT" },
+    "T_STAR": { "level": 7, "assoc": "LEFT" },
+    "T_DIVIDE": { "level": 7, "assoc": "LEFT" },
+    "T_PERCENT": { "level": 7, "assoc": "LEFT" }
+  },
   "Start": "script",
   "Productions": [
     {"head": "script", "body": ["statement_list", "opt_pcomma", "T_EOF"]},
@@ -159,6 +184,7 @@
     {"head": "E_Primary", "body": ["T_TIME_LITERAL"]},
     {"head": "E_Primary", "body": ["T_DEFAULT"]},
     {"head": "E_Primary", "body": ["T_UNDERSCORE"]},
+    {"head": "E_Primary", "body": ["T_PLACEHOLDER"]},
     {"head": "E_Primary", "body": ["T_PERCENT"]},
     {"head": "E_Primary", "body": ["T_LPAREN", "C_Expression", "T_RPAREN"]},
     {"head": "E_Primary", "body": ["T_LPAREN", "select_statement", "T_RPAREN"]},
@@ -266,7 +292,7 @@
     {"head": "select_query", "body": ["T_SELECT", "opt_distinct", "opt_top", "column_list", "opt_into", "opt_from_block", "opt_limit_clause"]},
     
     {"head": "opt_from_block", "body": ["T_FROM", "table_ref_list", "clauses"]},
-    {"head": "opt_from_block", "body": ["opt_order"]},
+    {"head": "opt_from_block", "body": ["clauses"]},
 
     {"head": "opt_limit_clause", "body": ["T_LIMIT", "T_INT"]},
     {"head": "opt_limit_clause", "body": ["T_LIMIT", "T_INT", "T_OFFSET", "T_INT"]},
@@ -294,6 +320,7 @@
     {"head": "opt_distinct", "body": []},
 
     {"head": "opt_into", "body": ["T_INTO", "uid"]},
+    {"head": "opt_into", "body": ["T_INTO", "T_HEX"]},
     {"head": "opt_into", "body": []},
 
     {"head": "column_list", "body": ["col_item"]},
@@ -369,12 +396,12 @@
 
     {"head": "truncate_stmt", "body": ["T_TRUNCATE", "T_TABLE", "uid"]},
 
-    {"head": "create_stmt", "body": ["T_CREATE", "T_DATABASE", "uid"]},
+    {"head": "create_stmt", "body": ["T_CREATE", "uid", "uid"]},
     {"head": "create_stmt", "body": ["T_CREATE", "T_TABLE", "uid", "T_LPAREN", "def_list", "T_RPAREN"]},
     {"head": "create_stmt", "body": ["T_CREATE", "T_INDEX", "uid", "T_ON", "uid", "T_LPAREN", "column_list", "T_RPAREN"]},
     {"head": "create_stmt", "body": ["T_CREATE", "T_VIEW", "uid", "T_AS", "select_statement"]},
     {"head": "create_stmt", "body": ["T_CREATE", "T_PROCEDURE", "uid", "T_AS", "statement"]},
-    {"head": "drop_stmt", "body": ["T_DROP", "T_DATABASE", "opt_if_exists", "uid"]},
+    {"head": "drop_stmt", "body": ["T_DROP", "uid", "opt_if_exists", "uid"]},
     {"head": "drop_stmt", "body": ["T_DROP", "T_TABLE", "opt_if_exists", "uid"]},
     {"head": "drop_stmt", "body": ["T_DROP", "T_INDEX", "opt_if_exists", "uid"]},
     {"head": "drop_stmt", "body": ["T_DROP", "T_VIEW", "opt_if_exists", "uid"]},

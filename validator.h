@@ -16,12 +16,25 @@ struct Token {
     string value; 
 };
 
+enum AlertSeverity {
+    SEV_CRITICAL_HARD_BLOCK,
+    SEV_HIGH_RISK,
+    SEV_MEDIUM_PRIVILEGE,
+    SEV_LOW_SUSPICIOUS
+};
+
 struct ParserAction {
     enum Type { SHIFT, REDUCE, ACCEPT, ERROR } type;
     int state; 
     string lhs;   // Left-Hand Side
     int rhsSize;  // Aantal symbolen aan de rechterkant
     };
+
+struct SecurityFinding {
+    AlertSeverity severity;
+    string message;
+};
+
 
 // Eenvoudige lexer die een SQL string omzet in tokens.
 class SimpleLexer {
@@ -56,7 +69,10 @@ public:
 
 // Beveiligingslaag die zoekt naar SQL Injection patronen.
 class SecurityAnalyzer {
+private:
+    vector<SecurityFinding> findings;
 public:
+    const vector<SecurityFinding>& getLastFindings() const { return findings; }
     bool isDangerous(SimpleLexer& lexer, string query, UserRole role);
 };
 
