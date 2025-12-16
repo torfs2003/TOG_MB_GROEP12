@@ -4,7 +4,7 @@
     "cte_element", "opt_column_names", "column_name_list", "main_statement", 
     "C", "E", "C_Expression", "C_Term", "C_Factor", "C_Relational", 
     "E_Bitwise", "E_Add", "E_Mult", "E_Unary", "E_Primary", 
-    "B", "bit_op", "quantifier", "scalar_function",
+    "B", "bit_op", "quantifier",
     "function_call", "star_or_e", "opt_args", "value_list", "agg_func", 
     "window_function", "window_spec", "opt_partition", "opt_order_clause", "opt_window_frame", "frame_clause", "frame_start", "frame_end",
     "cast_expression", "case_expression", "case_when_list", "opt_else", 
@@ -12,14 +12,16 @@
     "opt_where", "opt_group", "opt_having", "opt_order", 
     "opt_top", "opt_distinct", "opt_into", "column_list", 
     "col_item", "opt_enforcement", "table_ref_list", "table_ref", "table_factor", 
-    "join_type", "join_condition", "order_list", 
+    "join_type", "join_condition", "order_list",
+    "grant_statement", "revoke_statement", "privilege_list", "privilege", "waitfor_statement",
     "order_item", "opt_dir", "insert_statement", "insert_source", 
     "multi_row_values", "row_value", "update_statement", "assignment_list", 
     "delete_statement", "ddl_statement", "truncate_stmt", "create_stmt", 
     "drop_stmt", "alter_stmt", "alter_action_list", "alter_action", "backup_statement", "def_list", 
     "col_def", "data_type", "base_type", "opt_type_params", "opt_constraints", 
     "constraint", "table_constraint", "opt_if_exists",
-    "uid", "opt_pcomma", "opt_ref_actions", "ref_action_list", "ref_action", "action_rule"
+    "uid", "opt_pcomma", "opt_ref_actions", "ref_action_list", "ref_action", "action_rule",
+    "opt_limit_clause"
   ],
   "Terminals": [
     "T_EOF", "T_PCOMMA", "T_WITH", "T_COMMA", "T_ID", "T_AS", 
@@ -45,7 +47,9 @@
     "T_NUMERIC", "T_REAL", "T_DATE", "T_DATETIME", "T_TIMESTAMP", "T_TIME", 
     "T_YEAR", "T_BIT", "T_BLOB", "T_JSON", "T_XML", "T_PK", "T_FK", 
     "T_REFERENCES", "T_AUTOINCREMENT", "T_UNIQUE", "T_CHECK",
-    "T_ROWS", "T_RANGE", "T_UNBOUNDED", "T_PRECEDING", "T_FOLLOWING", "T_CURRENT", "T_ROW", "T_IF"
+    "T_ROWS", "T_RANGE", "T_UNBOUNDED", "T_PRECEDING", "T_FOLLOWING", "T_CURRENT", "T_ROW", "T_IF",
+    "T_GRANT", "T_REVOKE", "T_TO", "T_WAITFOR", "T_DELAY", "T_TIME_LITERAL",
+    "T_HEX", "T_LIMIT", "T_OFFSET", "T_XOR", "T_SLEEP", "T_BENCHMARK"
   ],
   "Start": "script",
   "Productions": [
@@ -68,11 +72,27 @@
 
     {"head": "cte_element", "body": ["uid", "opt_column_names", "T_AS", "T_LPAREN", "select_query", "T_RPAREN"]},
 
+    {"head": "grant_statement", "body": ["T_GRANT", "privilege_list", "T_ON", "uid", "T_TO", "uid"]},
+    {"head": "revoke_statement", "body": ["T_REVOKE", "privilege_list", "T_ON", "uid", "T_FROM", "uid"]},
+
+    {"head": "privilege_list", "body": ["privilege"]},
+    {"head": "privilege_list", "body": ["privilege_list", "T_COMMA", "privilege"]},
+
+    {"head": "privilege", "body": ["T_SELECT"]},
+    {"head": "privilege", "body": ["T_INSERT"]},
+    {"head": "privilege", "body": ["T_UPDATE"]},
+    {"head": "privilege", "body": ["T_DELETE"]},
+    {"head": "privilege", "body": ["T_ALL"]},
+
+    {"head": "waitfor_statement", "body": ["T_WAITFOR", "T_DELAY", "T_STRING"]}, 
+    {"head": "waitfor_statement", "body": ["T_WAITFOR", "T_TIME_LITERAL"]},
+
     {"head": "opt_column_names", "body": ["T_LPAREN", "column_name_list", "T_RPAREN"]},
     {"head": "opt_column_names", "body": []},
 
     {"head": "column_name_list", "body": ["uid"]},
     {"head": "column_name_list", "body": ["column_name_list", "T_COMMA", "uid"]},
+
 
     {"head": "main_statement", "body": ["select_statement"]},
     {"head": "main_statement", "body": ["insert_statement"]},
@@ -81,12 +101,16 @@
     {"head": "main_statement", "body": ["ddl_statement"]},
     {"head": "main_statement", "body": ["backup_statement"]},
     {"head": "main_statement", "body": ["block_statement"]},
+    {"head": "main_statement", "body": ["grant_statement"]},
+    {"head": "main_statement", "body": ["revoke_statement"]},
+    {"head": "main_statement", "body": ["waitfor_statement"]},
 
     {"head": "C", "body": ["C_Expression"]},
     {"head": "E", "body": ["C_Expression"]},
 
     {"head": "C_Expression", "body": ["C_Expression", "T_OR", "C_Term"]},
     {"head": "C_Expression", "body": ["C_Term"]},
+    {"head": "C_Expression", "body": ["C_Expression", "T_XOR", "C_Term"]},
 
     {"head": "C_Term", "body": ["C_Term", "T_AND", "C_Factor"]},
     {"head": "C_Term", "body": ["C_Factor"]},
@@ -128,8 +152,11 @@
     {"head": "E_Primary", "body": ["T_FLOAT"]},
     {"head": "E_Primary", "body": ["T_STRING"]},
     {"head": "E_Primary", "body": ["T_BOOLEAN"]},
+    {"head": "E_Primary", "body": ["T_HEX"] },
     {"head": "E_Primary", "body": ["T_NULL"]},
+    {"head": "E_Primary", "body": ["T_NOT_NULL"]},
     {"head": "E_Primary", "body": ["T_DATE_LIT"]},
+    {"head": "E_Primary", "body": ["T_TIME_LITERAL"]},
     {"head": "E_Primary", "body": ["T_DEFAULT"]},
     {"head": "E_Primary", "body": ["T_UNDERSCORE"]},
     {"head": "E_Primary", "body": ["T_PERCENT"]},
@@ -138,6 +165,7 @@
     {"head": "E_Primary", "body": ["function_call"]},
     {"head": "E_Primary", "body": ["case_expression"]},
     {"head": "E_Primary", "body": ["cast_expression"]},
+    {"head": "E_Primary", "body": ["window_function"]},
 
     {"head": "uid", "body": ["T_ID"]},
     {"head": "uid", "body": ["T_TIMESTAMP"]},
@@ -168,6 +196,8 @@
     {"head": "function_call", "body": ["T_IF", "T_LPAREN", "opt_args", "T_RPAREN"]},
     {"head": "function_call", "body": ["T_COUNT", "T_LPAREN", "opt_distinct", "star_or_e", "T_RPAREN"]},
     {"head": "function_call", "body": ["agg_func", "T_LPAREN", "opt_distinct", "C_Expression", "T_RPAREN"]},
+    {"head": "function_call", "body": ["T_SLEEP", "T_LPAREN", "C_Expression", "T_RPAREN"]},
+    {"head": "function_call", "body": ["T_BENCHMARK", "T_LPAREN", "T_INT", "T_COMMA", "C_Expression", "T_RPAREN"]},
 
     {"head": "star_or_e", "body": ["T_STAR"]},
     {"head": "star_or_e", "body": ["C_Expression"]},
@@ -195,14 +225,17 @@
 
     {"head": "frame_clause", "body": ["T_ROWS", "T_BETWEEN", "frame_start", "T_AND", "frame_end"]},
     {"head": "frame_clause", "body": ["T_RANGE", "T_BETWEEN", "frame_start", "T_AND", "frame_end"]},
+    {"head": "frame_clause", "body": ["T_ROWS", "frame_start"]},
+    {"head": "frame_clause", "body": ["T_RANGE", "frame_start"]},
 
     {"head": "frame_start", "body": ["T_UNBOUNDED", "T_PRECEDING"]},
     {"head": "frame_start", "body": ["T_CURRENT", "T_ROW"]},
-    {"head": "frame_start", "body": ["T_INT", "T_PRECEDING"]},
+    {"head": "frame_start", "body": ["E_Bitwise", "T_PRECEDING"]},
+    {"head": "frame_start", "body": ["E_Bitwise", "T_FOLLOWING"]},
 
     {"head": "frame_end", "body": ["T_UNBOUNDED", "T_FOLLOWING"]},
     {"head": "frame_end", "body": ["T_CURRENT", "T_ROW"]},
-    {"head": "frame_end", "body": ["T_INT", "T_FOLLOWING"]},
+    {"head": "frame_end", "body": ["E_Bitwise", "T_FOLLOWING"]},
 
     {"head": "opt_partition", "body": ["T_PARTITION", "T_BY", "column_list"]},
     {"head": "opt_partition", "body": []},
@@ -230,10 +263,15 @@
     {"head": "select_statement", "body": ["select_statement", "T_EXCEPT", "select_query"]},
     {"head": "select_statement", "body": ["select_statement", "T_MINUS_KEYWORD", "select_query"]},
 
-    {"head": "select_query", "body": ["T_SELECT", "opt_distinct", "opt_top", "column_list", "opt_into", "opt_from_block"]},
-
+    {"head": "select_query", "body": ["T_SELECT", "opt_distinct", "opt_top", "column_list", "opt_into", "opt_from_block", "opt_limit_clause"]},
+    
     {"head": "opt_from_block", "body": ["T_FROM", "table_ref_list", "clauses"]},
     {"head": "opt_from_block", "body": ["opt_order"]},
+
+    {"head": "opt_limit_clause", "body": ["T_LIMIT", "T_INT"]},
+    {"head": "opt_limit_clause", "body": ["T_LIMIT", "T_INT", "T_OFFSET", "T_INT"]},
+    {"head": "opt_limit_clause", "body": ["T_LIMIT", "T_INT", "T_COMMA", "T_INT"]}, 
+    {"head": "opt_limit_clause", "body": []},
 
     {"head": "clauses", "body": ["opt_where", "opt_group", "opt_having", "opt_order"]},
 
@@ -264,9 +302,7 @@
     {"head": "col_item", "body": ["T_STAR"]},
     {"head": "col_item", "body": ["E"]},
     {"head": "col_item", "body": ["E", "T_AS", "uid"]},
-    {"head": "col_item", "body": ["window_function"]},
-{"head": "col_item", "body": ["window_function", "T_AS", "uid"]},
-
+    
     {"head": "table_ref_list", "body": ["table_ref"]},
     {"head": "table_ref_list", "body": ["table_ref_list", "T_COMMA", "table_ref"]},
 
@@ -304,7 +340,6 @@
     {"head": "order_list", "body": ["order_list", "T_COMMA", "order_item"]},
 
     {"head": "order_item", "body": ["E", "opt_dir"]},
-    {"head": "order_item", "body": ["window_function", "opt_dir"]},
 
     {"head": "opt_dir", "body": ["T_ASC"]},
     {"head": "opt_dir", "body": ["T_DESC"]},
@@ -357,9 +392,11 @@
     {"head": "alter_action", "body": ["T_ADD", "T_COLUMN", "uid", "data_type", "opt_constraints"]},
     {"head": "alter_action", "body": ["T_DROP", "T_COLUMN", "uid"]},
     {"head": "alter_action", "body": ["T_ALTER", "T_COLUMN", "uid", "data_type"]},
+    {"head": "alter_action", "body": ["T_ALTER", "T_COLUMN", "uid", "T_SET", "T_DEFAULT", "E"]},
     {"head": "alter_action", "body": ["T_ADD", "T_CONSTRAINT", "uid", "table_constraint"]},
 
     {"head": "backup_statement", "body": ["T_BACKUP", "T_DATABASE", "uid"]},
+    {"head": "backup_statement", "body": ["T_BACKUP", "T_DATABASE", "uid", "T_TO", "T_STRING"]},
 
     {"head": "def_list", "body": ["col_def"]},
     {"head": "def_list", "body": ["def_list", "T_COMMA", "col_def"]},
@@ -406,6 +443,7 @@
     {"head": "opt_constraints", "body": ["constraint", "opt_constraints"]},
     {"head": "opt_constraints", "body": []},
 
+    {"head": "constraint", "body": ["T_CONSTRAINT", "uid", "constraint"]},
     {"head": "constraint", "body": ["T_PK"]},
     {"head": "constraint", "body": ["T_FK"]},
     {"head": "constraint", "body": ["T_REFERENCES", "uid", "T_LPAREN", "uid", "T_RPAREN", "opt_ref_actions"]},
@@ -423,7 +461,7 @@
 
     {"head": "table_constraint", "body": ["T_PK", "T_LPAREN", "column_name_list", "T_RPAREN"]},
     {"head": "table_constraint", "body": ["T_FK", "T_LPAREN", "column_name_list", "T_RPAREN", "T_REFERENCES", "uid", "T_LPAREN", "column_name_list", "T_RPAREN", "opt_ref_actions"]},
-    {"head": "table_constraint", "body": ["T_CHECK", "T_LPAREN", "C", "T_RPAREN", "opt_enforcement"]},     
+    {"head": "table_constraint", "body": ["T_CHECK", "T_LPAREN", "C", "T_RPAREN", "opt_enforcement"]},
     {"head": "table_constraint", "body": ["T_UNIQUE", "T_LPAREN", "column_name_list", "T_RPAREN"]},
 
     {"head": "opt_ref_actions", "body": ["ref_action_list"]},

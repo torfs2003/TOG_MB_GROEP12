@@ -34,7 +34,13 @@ public:
 
 // Controleert of een gebruiker (UserRole) een bepaald commando mag uitvoeren.
 class RBACManager {
+private:
+    // De Matrix: Koppelt een Rol aan een Set van toegestane commando's
+    unordered_map<UserRole, unordered_set<string>> permissions;
+    void loadPermissions();
+
 public:
+    RBACManager();
     string getRoleName(UserRole role);
     bool hasPermission(UserRole role, const vector<Token>& tokens);
 };
@@ -51,15 +57,6 @@ public:
 // Beveiligingslaag die zoekt naar SQL Injection patronen.
 class SecurityAnalyzer {
 public:
-    // Keywords die duiden op destructieve acties
-    const unordered_set<string> dangerous_keywords = {
-        "T_DROP", "T_TRUNCATE", "T_ALTER", "T_PROCEDURE", "T_CREATE", "T_BACKUP"
-    };
-    // Functies die gebruikt worden voor Time-Based Blind SQL Injection
-    const unordered_set<string> time_based_functions = {
-        "SLEEP", "WAITFOR", "BENCHMARK"
-    };
-
     bool isDangerous(SimpleLexer& lexer, string query, UserRole role);
 };
 

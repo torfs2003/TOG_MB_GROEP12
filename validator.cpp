@@ -1,18 +1,25 @@
 #include "validator.h" 
 
-
 /* "De Security Scanner implementeert detectie voor alle SQL Injection vectoren 
 gedocumenteerd door W3Schools (Tautologies, End-of-Line injecties, Stacked Queries) en 
 breidt dit uit met bescherming tegen geavanceerde technieken zoals Time-Based Blind 
 SQLi, Hex-encoding obfuscation en System Variable Fingerprinting*/
 
-const unordered_set<string> dangerous_keywords = {
-    "T_DROP", "T_TRUNCATE", "T_ALTER", "T_INSERT", "T_UPDATE", "T_DELETE", 
-    "T_PROCEDURE", "T_CREATE", "T_BACKUP"
+
+// DDL - ALLEEN ADMIN
+static const unordered_set<string> DDL_KEYWORDS = {
+    "T_DROP", "T_TRUNCATE", "T_ALTER", "T_CREATE", 
+    "T_PROCEDURE", "T_BACKUP", "T_GRANT", "T_REVOKE"
 };
 
-const unordered_set<string> time_based_functions = {
-    "SLEEP", "WAITFOR", "BENCHMARK"
+// DML - EMPLOYEE & ADMIN
+static const unordered_set<string> DML_KEYWORDS = {
+    "T_INSERT", "T_UPDATE", "T_DELETE"
+};
+
+// Functies gebruikt voor MySQL Time-Based Blind SQL Injections
+static const unordered_set<string> TIME_BASED_FUNCTIONS = {
+    "SLEEP", "BENCHMARK" 
 };
 
 // Mapping van SQL keywords naar Token types
@@ -63,6 +70,14 @@ SimpleLexer::SimpleLexer() {
     keywords["EXISTS"] = "T_EXISTS";
     keywords["FALSE"] = "T_BOOLEAN";
     keywords["FLOAT"] = "T_FLOAT_TYPE";
+    keywords["GRANT"]  = "T_GRANT";
+    keywords["REVOKE"] = "T_REVOKE";
+    keywords["TO"]     = "T_TO";
+    keywords["WAITFOR"]   = "T_WAITFOR";
+    keywords["DELAY"]     = "T_DELAY";
+    keywords["SLEEP"]     = "T_SLEEP";
+    keywords["BENCHMARK"] = "T_BENCHMARK";
+    keywords["XOR"]       = "T_XOR";
     keywords["FROM"] = "T_FROM";
     keywords["FULL"] = "T_FJOIN"; 
     keywords["GROUP"] = "T_GROUP";
@@ -121,6 +136,8 @@ SimpleLexer::SimpleLexer() {
     keywords["TIMESTAMP"] = "T_TIMESTAMP";
     keywords["TINYINT"] = "T_TINYINT";
     keywords["TOP"] = "T_TOP";
+    keywords["LIMIT"] = "T_LIMIT";
+    keywords["OFFSET"] = "T_OFFSET";
     keywords["TRUNCATE"] = "T_TRUNCATE";
     keywords["TRUE"] = "T_BOOLEAN"; 
     keywords["UNION"] = "T_UNION";
@@ -130,6 +147,7 @@ SimpleLexer::SimpleLexer() {
     keywords["VALUES"] = "T_VALUES";
     keywords["VARCHAR"] = "T_VARCHAR";
     keywords["VIEW"] = "T_VIEW";
+    keywords["WAITFOR"] = "T_WAITFOR";
     keywords["WHEN"] = "T_WHEN";
     keywords["WHERE"] = "T_WHERE";
     keywords["WITH"] = "T_WITH";
@@ -142,9 +160,10 @@ SimpleLexer::SimpleLexer() {
     keywords["PRECEDING"] = "T_PRECEDING";
     keywords["OUTER"] = "T_OUTER";
     keywords["IF"] = "T_IF";
+
     // Mapping van leestekens
     symbols['*'] = "T_STAR";    symbols[','] = "T_COMMA";
-    symbols[';'] = "T_PCOMMA";     symbols['('] = "T_LPAREN";
+    symbols[';'] = "T_PCOMMA";  symbols['('] = "T_LPAREN";
     symbols[')'] = "T_RPAREN";  symbols['='] = "T_EQ";
     symbols['+'] = "T_ADD";     symbols['.'] = "T_DOT";
     symbols['>'] = "T_GT";      symbols['<'] = "T_LT";
@@ -181,14 +200,14 @@ vector<Token> SimpleLexer::tokenize(string input) {
             continue; 
         }
 
-       // Strings ("...")
+        // Identifiers met dubbele aanhalingstekens ("...")
         if (c == '"') {
             string val;
             i++; 
             while (i < input.length()) {
                 if (input[i] == '"') {
                     if (i + 1 < input.length() && input[i+1] == '"') {
-                        val += '"'; // Escaped quote in SQL
+                        val += '"';
                         i += 2;
                     } else {
                         i++;
@@ -202,15 +221,55 @@ vector<Token> SimpleLexer::tokenize(string input) {
             continue;
         }
 
-        // Hexadecimale getallen (0x...) - Vaak gebruikt voor obfuscation
+        // Identifiers met Backticks (`)
+        if (c == '`') {
+            string val;
+            i++; 
+            while (i < input.length()) {
+                if (input[i] == '`') {
+                    if (i + 1 < input.length() && input[i+1] == '`') {
+                        val += '`';
+                        i += 2;
+                    } else {
+                        i++;
+                        break;
+                    }
+                } else {
+                    val += input[i++];
+                }
+            }
+            tokens.push_back({"T_ID", val}); 
+            continue;
+        }
+
+
+        // Hexadecimale getallen (0x...)
         if (c == '0' && i + 1 < input.length() && (input[i+1] == 'x' || input[i+1] == 'X')) {
             string hexStr = "0x";
             i += 2; 
             while (i < input.length() && isxdigit(input[i])) {
                 hexStr += input[i++];
             }
-            tokens.push_back({"T_INT", hexStr});
+            tokens.push_back({"T_HEX", hexStr}); 
             continue;
+        }
+
+        //Tijd Literalen
+        if (isdigit(c) && i + 1 < input.length() && input[i+1] == ':') {
+            string timeStr;
+            int k = i;
+            int colonCount = 0;
+            
+            while (k < input.length() && (isdigit(input[k]) || input[k] == ':')) {
+                if (input[k] == ':') colonCount++;
+                timeStr += input[k++];
+            }
+            
+            if (colonCount >= 2) { 
+                tokens.push_back({"T_TIME_LITERAL", timeStr});
+                i = k;
+                continue;
+            }
         }
 
         // Getallen
@@ -225,6 +284,7 @@ vector<Token> SimpleLexer::tokenize(string input) {
             continue;
         }
 
+
         // Identifiers en Keywords
         if (isalpha(c) || c == '_' || c == '@') { 
             string word;
@@ -235,7 +295,7 @@ vector<Token> SimpleLexer::tokenize(string input) {
             string upper = word;
             transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
 
-            // Speciale gevallen voor gecombineerde keywords
+            // Speciale gevallen voor gecombineerde keywords (Multi-word lookahead)
             if (upper == "NOT") {
                 int tempI = i;
                 while (tempI < input.length() && isspace(input[tempI])) tempI++;
@@ -250,18 +310,15 @@ vector<Token> SimpleLexer::tokenize(string input) {
 
                     if (nextUpper == "IN") {
                         tokens.push_back({"T_NOT_IN", "NOT IN"});
-                        i = tempI; 
-                        continue;
+                        i = tempI; continue;
                     } 
                     else if (nextUpper == "LIKE") {
                         tokens.push_back({"T_NOT_LIKE", "NOT LIKE"});
-                        i = tempI;
-                        continue;
+                        i = tempI; continue;
                     } 
                     else if (nextUpper == "NULL") {
                         tokens.push_back({"T_NOT_NULL", "NOT NULL"});
-                        i = tempI;
-                        continue;
+                        i = tempI; continue;
                     }
                 }
             }
@@ -270,7 +327,6 @@ vector<Token> SimpleLexer::tokenize(string input) {
             if (upper == "PRIMARY") {
                 int tempI = i; 
                 while (tempI < input.length() && isspace(input[tempI])) tempI++;
-
                 if (tempI < input.length() && (isalpha(input[tempI]) || input[tempI] == '_')) {
                     string nextWord;
                     while (tempI < input.length() && (isalnum(input[tempI]) || input[tempI] == '_')) {
@@ -281,8 +337,7 @@ vector<Token> SimpleLexer::tokenize(string input) {
 
                     if (nextUpper == "KEY") {
                         tokens.push_back({"T_PK", "PRIMARY KEY"});
-                        i = tempI; 
-                        continue; 
+                        i = tempI; continue; 
                     }
                 }
             }
@@ -291,7 +346,6 @@ vector<Token> SimpleLexer::tokenize(string input) {
             if (upper == "FOREIGN") {
                 int tempI = i; 
                 while (tempI < input.length() && isspace(input[tempI])) tempI++;
-
                 if (tempI < input.length() && (isalpha(input[tempI]) || input[tempI] == '_')) {
                     string nextWord;
                     while (tempI < input.length() && (isalnum(input[tempI]) || input[tempI] == '_')) {
@@ -302,8 +356,7 @@ vector<Token> SimpleLexer::tokenize(string input) {
 
                     if (nextUpper == "KEY") {
                         tokens.push_back({"T_FK", "FOREIGN KEY"});
-                        i = tempI; 
-                        continue; 
+                        i = tempI; continue; 
                     }
                 }
             }
@@ -315,15 +368,15 @@ vector<Token> SimpleLexer::tokenize(string input) {
             }
             continue;
         }
-      
+        
         // Single quoted strings ('...')
         if (c == '\'') {
             string s;
             i++;
             while (i < input.length()) {
                 if (input[i] == '\'' && i + 1 < input.length() && input[i+1] == '\'') {
-                    s += "'";  
-                    i += 2;    
+                    s += "'";
+                    i += 2;
                 } 
                 else if (input[i] == '\'') {
                     i++; 
@@ -377,6 +430,51 @@ vector<Token> SimpleLexer::tokenize(string input) {
     return tokens;
 }
 
+RBACManager::RBACManager() {
+    loadPermissions();
+}
+
+void RBACManager::loadPermissions() {
+    
+    // READ (DQL)
+    unordered_set<string> readOps = {
+        "T_SELECT", 
+        "T_WITH",
+        "T_VALUES"
+    };
+
+    // WRITE (DML)
+    unordered_set<string> writeOps = {
+        "T_INSERT", 
+        "T_UPDATE", 
+        "T_DELETE"
+    };
+
+    // ADMIN (DDL & System)
+    unordered_set<string> adminOps = {
+        "T_CREATE", 
+        "T_DROP", 
+        "T_ALTER", 
+        "T_TRUNCATE", 
+        "T_BACKUP",
+        "T_PROCEDURE",
+        "T_GRANT",
+        "T_REVOKE"
+    };
+
+    // CLIENT: Mag alleen lezen
+    permissions[ROLE_CLIENT] = readOps;
+
+    // EMPLOYEE: Mag lezen + schrijven
+    permissions[ROLE_EMPLOYEE] = readOps;
+    permissions[ROLE_EMPLOYEE].insert(writeOps.begin(), writeOps.end());
+
+    // ADMIN: Mag alles
+    permissions[ROLE_ADMIN] = readOps;
+    permissions[ROLE_ADMIN].insert(writeOps.begin(), writeOps.end());
+    permissions[ROLE_ADMIN].insert(adminOps.begin(), adminOps.end());
+}
+
 string RBACManager::getRoleName(UserRole role) {
     switch(role) {
         case ROLE_CLIENT:   return "CLIENT [R--] (Select Only)";
@@ -392,32 +490,24 @@ bool RBACManager::hasPermission(UserRole role, const vector<Token>& tokens) {
 
     string command = "";
     for(const auto& t : tokens) {
+        if (t.type == "T_LPAREN") continue;
+
         if (t.type != "T_EOF" && t.type != "$") {
             command = t.type;
             break;
         }
     }
     
-    bool isRead = (command == "T_SELECT" || command == "T_WITH" || command == "T_VALUES");
-    
-    bool isWrite = (command == "T_INSERT" || command == "T_UPDATE" || command == "T_DELETE");
-    
-    bool isAdmin = (command == "T_DROP" || command == "T_CREATE" || command == "T_ALTER" || 
-                    command == "T_TRUNCATE" || command == "T_BACKUP" || command == "T_PROCEDURE");
+    // Als er geen commando gevonden is, weiger toegang
+    if (command == "") return false;
 
-    if (role == ROLE_ADMIN) {
-        return true; 
+    if (permissions.count(role)) {
+        if (permissions[role].count(command)) {
+            return true;
+        }
     }
 
-    if (role == ROLE_EMPLOYEE) {
-        if (isRead || isWrite) return true;
-        if (isAdmin) return false;
-    }
-
-    if (role == ROLE_CLIENT) {
-        if (isRead) return true;
-        if (isWrite || isAdmin) return false;
-    }
+    if (role == ROLE_ADMIN) return true;
 
     return false;
 }
@@ -492,7 +582,7 @@ bool LALRParser::parse(vector<Token>& tokens) {
             if (sym == "T_PCOMMA") {
                 cout << "    --> [Recovery] Found delimiter ';'. Resuming parse..." << endl;
                 
-                cout << "\n         Result: \033[1;31m[REJECTED]\033[0m" << endl;
+                cout << "\n        Result: \033[1;31m[REJECTED]\033[0m" << endl;
 
                 while(!stateStack.empty()) stateStack.pop();
                 stateStack.push(0);
@@ -509,7 +599,7 @@ bool LALRParser::parse(vector<Token>& tokens) {
             } 
             else if (sym == "T_EOF" || sym == "$") {
                  cout << "    --> [Recovery] Reached EOF. Stopping." << endl;
-                 cout << "\n         Result: \033[1;31m[REJECTED]\033[0m" << endl;
+                 cout << "\n        Result: \033[1;31m[REJECTED]\033[0m" << endl;
                  return false; 
             }
             else {
@@ -527,9 +617,9 @@ bool LALRParser::parse(vector<Token>& tokens) {
             // Bij een puntkomma is de query afgerond
             if (sym == "T_PCOMMA") {
                 if (!currentQueryError) {
-                    cout << "\n         Result: \033[1;32m[ACCEPTED]\033[0m" << endl;
+                    cout << "\n        Result: \033[1;32m[ACCEPTED]\033[0m" << endl;
                 } else {
-                    cout << "\n         Result: \033[1;31m[REJECTED]\033[0m" << endl;
+                    cout << "\n        Result: \033[1;31m[REJECTED]\033[0m" << endl;
                 }
 
                 while(!stateStack.empty()) stateStack.pop();
@@ -557,8 +647,8 @@ bool LALRParser::parse(vector<Token>& tokens) {
             stateStack.push(gotoTable[topState][act.lhs]);
         } 
         else if (act.type == ParserAction::ACCEPT) {
-            if (!currentQueryError) cout << "\n         Result: \033[1;32m[ACCEPTED]\033[0m" << endl;
-            else cout << "\n         Result: \033[1;31m[REJECTED]\033[0m" << endl;
+            if (!currentQueryError) cout << "\n        Result: \033[1;32m[ACCEPTED]\033[0m" << endl;
+            else cout << "\n        Result: \033[1;31m[REJECTED]\033[0m" << endl;
             return !globalError;
         }
     }
@@ -589,9 +679,14 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole ro
 
     // Detecteer comments die vaak gebruikt worden om syntax checks te omzeilen
     if (query.find("--") != string::npos || query.find("/*") != string::npos) {
-        cout << "   --> \033[1;31m[ALERT]\033[0m Suspicious Comment found ('--' or '/*'). Possible truncation attack." << endl;
-        dangerous = true;
+       if (role != ROLE_ADMIN) {
+            cout << "   --> \033[1;31m[ALERT]\033[0m Suspicious Comment found ('--' or '/*'). Possible truncation attack." << endl;
+            dangerous = true;
+        } else {
+            cout << "   --> \033[1;33m[WARNING]\033[0m Suspicious Comment found. Allowed for ADMIN." << endl;
+        }
     }
+
     // Detecteer toegang tot systeem tabellen
     if (query.find("information_schema") != string::npos || 
         query.find("pg_catalog") != string::npos) {
@@ -605,55 +700,87 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole ro
         string type = tokens[i].type;
         string value = tokens[i].value;
 
-        // Detecteer Tautologies (bv: 1=1 of 'a'='a')
+        // Detecteer Tautology
         if (i + 2 < tokens.size()) {
             string t1 = tokens[i].type;
             string t2 = tokens[i+1].type;
             string t3 = tokens[i+2].type;
-
-            bool isLiteral1 = (t1 == "T_INT" || t1 == "T_STRING");
-            bool isLiteral2 = (t3 == "T_INT" || t3 == "T_STRING");
+            bool isLiteral1 = (t1 == "T_INT" || t1 == "T_STRING" || t1 == "T_HEX" || t1 == "T_BOOLEAN");
+            bool isLiteral2 = (t3 == "T_INT" || t3 == "T_STRING" || t3 == "T_HEX" || t3 == "T_BOOLEAN");
 
             if (isLiteral1 && t2 == "T_EQ" && isLiteral2) {
                 if (tokens[i].value == tokens[i+2].value) {
-                     cout << "   --> \033[1;31m[ALERT]\033[0m Tautology detected ('" 
-                          << tokens[i].value << "=" << tokens[i+2].value 
-                          << "'). Possible authentication bypass." << endl;
-                     dangerous = true;
+                        cout << "   --> \033[1;31m[ALERT]\033[0m Tautology detected ('" 
+                            << tokens[i].value << "=" << tokens[i+2].value 
+                            << "'). Possible authentication bypass." << endl;
+                        dangerous = true;
                 }
             }
+            
         }
 
-        // Detecteer Stacked Queries (meerdere commando's)
-        if (type == "T_PCOMMA") {
-            if (i + 1 < tokens.size() && tokens[i+1].type != "T_EOF" && tokens[i+1].type != "$") {
-                cout << "   --> \033[1;31m[ALERT]\033[0m Stacked Query detected (';' followed by command). Possible command injection." << endl;
-                dangerous = true;
-            }
-        }
-
-        // Detecteer logische negatie, vaak gebruikt voor bypass
-        if (type == "T_OR" && i + 1 < tokens.size() && tokens[i+1].type == "T_NOT") {
-            cout << "   --> \033[1;31m[ALERT]\033[0m Logical Negation ('OR NOT') detected. Possible filter bypass." << endl;
-            dangerous = true;
-        }
-
-        // Check op gevaarlijke keywords
-        if (dangerous_keywords.count(type)) {
-            if (role == ROLE_ADMIN) {
-                continue; 
+        // Detecteer DDL
+        if (DDL_KEYWORDS.count(type)) {
+            if (role != ROLE_ADMIN) {
+                // Blokkeer DDL keywords voor Client en Employee (onafhankelijk van RBAC eerste check)
+                cout << "   --> \033[1;31m[ALERT]\033[0m DDL Keyword (" << value << ") detected. Only ADMIN allowed." << endl;
+                dangerous = true; // Harde blokkering bij DDL in Stacked Query
             } else {
-                cout << "   --> \033[1;31m[ALERT]\033[0m High-risk DDL/DML keyword (" << value << ") detected. Policy Violation." << endl;
+                // ADMIN mag DDL uitvoeren, dus geen alert, maar markeer voor consistentie
+            }
+        }
+
+        //  Detecteer DML
+        if (DML_KEYWORDS.count(type)) {
+            if (role == ROLE_CLIENT) {
+                cout << "   --> \033[1;31m[ALERT]\033[0m DML Keyword (" << value << ") detected. Read-Only violation." << endl;
                 dangerous = true;
             }
+        }
+
+        if (type == "T_OR" && i + 1 < tokens.size() && tokens[i+1].type == "T_NOT") {
+            if (role == ROLE_CLIENT || role == ROLE_EMPLOYEE) {
+                cout << "   --> \033[1;31m[ALERT]\033[0m Logical Negation ('OR NOT') detected. Possible filter bypass." << endl;
+                dangerous = true;
+            } else {
+                cout << "   --> \033[1;33m[WARNING]\033[0m Logical Negation ('OR NOT') detected. Allowed for ADMIN." << endl;
+            }
+        }
+
+        // Detecteer XOR
+        if (type == "T_XOR") {
+             cout << "  --> \033[1;31m[ALERT]\033[0m Logical Operator 'XOR' detected. Suspicious payload." << endl;
+             dangerous = true;
         }
         
+        // detecteer MSSQL Injection
+        if (type == "T_WAITFOR" || type == "T_DELAY") {
+                    if (role != ROLE_ADMIN) {
+                        cout << "   --> \033[1;31m[ALERT]\033[0m Time-Based Keyword (" << value << ") detected. DOS/Stealth risk." << endl;
+                        dangerous = true;
+                    } else {
+                        cout << "   --> \033[1;33m[WARNING]\033[0m Time-Based Keyword (" << value << ") detected. Monitor for DOS." << endl;
+                    }
+                }
+
+                
+
+        // MySQL Time-Based (SLEEP / BENCHMARK)
+        if (type == "T_SLEEP" || type == "T_BENCHMARK") {
+                            if (role != ROLE_ADMIN) { 
+                                cout << "   --> \033[1;31m[ALERT]\033[0m MySQL Time-Based Function (" << value << ") detected. DOS/Stealth risk." << endl;
+                                dangerous = true;
+                            } else { 
+                                cout << "   --> \033[1;33m[WARNING]\033[0m MySQL Time-Based Function (" << value << ") detected. Monitor for DOS." << endl;
+                            }
+                        }
+        // General Identifier Checks (for MySQL functions and variables)
         if (type == "T_ID") {
             string upperValue = value;
             transform(upperValue.begin(), upperValue.end(), upperValue.begin(), ::toupper);
             
             // Detecteer Time-Based functies (DoS risico)
-            if (time_based_functions.count(upperValue)) {
+            if (TIME_BASED_FUNCTIONS.count(upperValue)) {
                 cout << "   --> \033[1;31m[ALERT]\033[0m Time-Based Function (" << upperValue << ") detected. DOS/Stealth risk." << endl;
                 dangerous = true;
             }
@@ -663,35 +790,51 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole ro
                 cout << "   --> \033[1;31m[ALERT]\033[0m System Variable / Version fingerprinting detected (" << value << ")." << endl;
                 dangerous = true;
             }
+
+            else if (upperValue == "VERSION" || upperValue == "DATABASE" || upperValue == "USER") {
+                cout << "   --> \033[1;31m[ALERT]\033[0m System Information Function (" << upperValue << "()) detected. Risk of enumeration." << endl;
+                dangerous = true;
+            }
         }
 
         // Detecteer Hex Encoding (0x...)
-        if (type == "T_INT" || type == "T_STRING") {
+        if (type == "T_HEX") {
+            cout << "   --> \033[1;31m[ALERT]\033[0m Hexadecimal Literal detected. Possible payload obfuscation." << endl;
+            dangerous = true;
+        }
+        else if (type == "T_INT" || type == "T_STRING") {
             if (value.size() > 2 && (value.substr(0, 2) == "0x" || value.substr(0, 2) == "0X")) {
-                cout << "   --> \033[1;31m[ALERT]\033[0m Hexadecimal Literal detected. Possible payload obfuscation." << endl;
+                cout << "   --> \033[1;31m[ALERT]\033[0m Hexadecimal Literal detected within String/Int." << endl;
                 dangerous = true;
             }
         }
         
         // UNION attacks
         if (type == "T_UNION") {
-            cout << "   --> \033[1;31m[ALERT]\033[0m 'UNION' detected. Possible data exfiltration." << endl;
-            dangerous = true;
+            if (role == ROLE_ADMIN) {
+                cout << "   --> \033[1;33m[WARNING]\033[0m 'UNION' detected. Allowed for ADMIN, but monitor for data exfiltration risk." << endl;
+            } else {
+                cout << "   --> \033[1;31m[ALERT]\033[0m 'UNION' detected. Possible data exfiltration." << endl;
+                dangerous = true;
+            }
         }
 
         // Gevallen opvangen wanneer "INTO" wordt gebruikt als aanval
         if (type == "T_INTO") {
             if (!tokens.empty()) {
                 string firstCommand = tokens[0].type;
+                if (firstCommand == "T_LPAREN" && tokens.size() > 1) firstCommand = tokens[1].type;
 
                 if (firstCommand == "T_SELECT" || firstCommand == "T_WITH") {
-                    cout << "   --> \033[1;31m[ALERT]\033[0m 'SELECT ... INTO' detected. Unauthorized table creation." << endl;
-                    dangerous = true;
+                    if (role == ROLE_ADMIN) {
+                        cout << "   --> \033[1;33m[WARNING]\033[0m 'SELECT ... INTO' detected. Allowed for ADMIN, monitor unauthorized creation." << endl;
+                    } else {
+                        cout << "   --> \033[1;31m[ALERT]\033[0m 'SELECT ... INTO' detected. Unauthorized table creation." << endl;
+                        dangerous = true;
+                    }
                 }
             }
         }
-
-
     }
 
     if (!dangerous) {

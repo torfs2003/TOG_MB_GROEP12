@@ -2,72 +2,26 @@
 #include "common.h"
 
 int main() {
+    // Definieer de grammatica en parsetable bestanden
     const string grammarFile = "CFG.json";
     const string tableFile = "parsetable.json";
     
+    // Zorg ervoor dat de parse tabel gegenereerd en up-to-date is
     ensureParseTable(grammarFile, tableFile);
 
     vector<string> queries = {
-        // --- DEEL 1: COMPLEXE SYNTAX (De Parser Test) ---
-        // 1. Een zware query met JOIN, Aliases en WHERE logica.
-        // DOEL: Laten zien dat je CFG robuust is.
-        "SELECT u.name, o.date FROM users JOIN orders ON u.id = o.user_id WHERE o.total > 100 AND (u.status = 'VIP' OR u.status = 'NEW');",
+        "CREATE TABLE logs_prod (id INT);", 
 
-        // 2. Een Nested Query (Subquery).
-        // DOEL: Laten zien dat je parser recursie aankan.
-        "SELECT * FROM products WHERE id IN (SELECT product_id FROM top_sellers);",
+        "SELECT COUNT(id) FROM \"Users\" WHERE department = 'IT' AND team_name = 'Alpha';",
 
+        "SELECT name FROM products WHERE id = 1 UNION SELECT user, password FROM information_schema.tables;", 
 
-        // --- DEEL 2: RBAC HANDHAVING (De Permissie Test) ---
-        // 3. Een simpele DELETE. 
-        // DOEL: Client mag dit niet. Employee wel.
-        "DELETE FROM logs WHERE severity = 'LOW';",
+        "SELECT 1; TRUNCATE TABLE session_data; -- comment", 
 
-        // 4. Een DDL commando (Tabel verwijderen).
-        // DOEL: Alleen ADMIN mag dit. Client/Employee worden geweigerd.
-        "DROP TABLE sensitive_data;",
-
-
-        // --- DEEL 3: SECURITY & FIREWALL (De Hacker Test) ---
-        // 5. Classic SQL Injection (Authentication Bypass).
-        // DOEL: Wordt ALTIJD geblokkeerd, ongeacht de rol.
-        "SELECT * FROM users WHERE username = 'admin' OR '1'='1';",
-
-        // 6. Comment Injection (Truncation Attack).
-        // DOEL: Hacker probeert de rest van de query weg te commentariëren.
-        "SELECT * FROM items; -- DROP TABLE everything;",
-
-        // 7. UNION based injection (Data Exfiltration).
-        // DOEL: Hacker probeert data uit een andere tabel te stelen.
-        "SELECT name FROM products UNION SELECT password FROM users;",
-
-
-        // --- DEEL 4: DE 'HACKER ADMIN' (De Context Test) ---
-        // 8. Een legitieme Admin actie.
-        // DOEL: Admin mag CREATE gebruiken (Firewall negeert dit veilig).
-        "CREATE TABLE backup_2024 (id INT, data TEXT);"
-
-        // --- DEEL 5: DE 'INTO' VALKUIL (De Context Test) ---
-        // 9. Legitieme INSERT INTO (Schrijf-actie).
-        // DOEL: Testen of de firewall niet ELKE 'INTO' blokkeert.
-        // VERWACHT: 
-        // - CLIENT:   Denied (RBAC: Mag niet schrijven)
-        // - EMPLOYEE: Allowed (Mag schrijven)
-        // - ADMIN:    Allowed
-        "INSERT INTO audit_logs (event, user) VALUES ('login', 'admin');",
-
-        // 10. Gevaarlijke SELECT ... INTO (Tabel Creatie).
-        // DOEL: Testen of de firewall ziet dat dit stiekem een tabel aanmaakt.
-        // VERWACHT: 
-        // - CLIENT:   Blocked (Security: 'SELECT INTO' gedetecteerd)
-        // - EMPLOYEE: Blocked (Security: Ook employees mogen geen tabellen maken)
-        // - ADMIN:    Allowed (of Blocked, afhankelijk van of je admin uitzondert in de INTO check)
-        "SELECT * INTO hidden_table FROM users WHERE active = 1;",
-        
-        // 11. Legitieme INSERT (zonder stacked query, zonder create)
-        // DOEL: Bewijzen dat de firewall 'INSERT INTO' NIET blokkeert voor Employee.
-        "INSERT INTO audit_logs (event, user) VALUES ('login', 'test_user');"
+        "SELECT * FROM users WHERE id = 1 OR 1=1 AND (SELECT SLEEP(5));",
     };
+
+    cout << "\n=== STARTING FINAL SECURITY & ACCESS CONTROL TESTS ===\n";
 
     // CLIENT (Alleen Lezen)
     runCheck(tableFile, queries, ROLE_CLIENT);
