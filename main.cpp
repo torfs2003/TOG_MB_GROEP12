@@ -1,5 +1,5 @@
-#include "validator.h"
 #include "common.h"
+#include "utils/QueryRunner.h"
 
 int main() {
     // Definieer de grammatica en parsetable bestanden
@@ -41,6 +41,7 @@ int main() {
         // TEST: Snapt je firewall dat 5+5 ook 10 is, of kijkt hij niet diep genoeg? (Waarschijnlijk bypass).
         R"(SELECT * FROM wallet WHERE id = 1 OR 10 = 5 + 5;)",
 
+<<<<<<< HEAD
         // 23. The "Hex/Bitwise" Tautology (Advanced check)
         // SCENARIO: Gebruik van niet-standaard literals om 'True' te forceren.
         // CODE 2: Heeft een specifieke check voor "OR TRUE" en "OR Non-Zero INT".
@@ -55,6 +56,37 @@ int main() {
         //         1=0 is niet 'Always True'.
         // TEST: Dit zou GEEN critical block moeten triggeren in Code 2, want het is geen aanval (het levert niks op).
         R"(SELECT * FROM products WHERE id = 1 OR 1 = 0;)",
+=======
+        // Q5a: Tautologie / Boolean-Based SQLi (Controle op OR in WHERE context)
+        "SELECT * FROM users WHERE user_id = 1 OR 1=1;",
+
+        // Q5b: String tautologie
+        "SELECT * FROM users WHERE username = 'admin' OR 'a'='a';",
+        
+        // Q5c: Altijd-true (1<2)
+        "SELECT * FROM users WHERE id = 5 OR 1<2;",
+        
+        // Q5d: OR TRUE
+        "SELECT * FROM users WHERE active = 0 OR TRUE;",
+        
+        // Q5e: OR niet-nul nummer
+        "SELECT * FROM users WHERE id = 999 OR 1;",
+        
+        // Q5f: Zelfde identifier
+        "SELECT * FROM users WHERE password = 'test' OR id=id;",
+        
+        // Q5g: Groter dan (2>1)
+        "SELECT * FROM accounts WHERE balance < 100 OR 2>1;",
+        
+        // Q5h: Niet gelijk aan (1!=2)
+        "SELECT * FROM users WHERE role = 'guest' OR 1!=2;",
+
+        // Q6: Stacked Query (Moet hard blokkeren bij dubbele ;)
+        "SELECT id FROM users; DELETE FROM accounts WHERE balance = 0;",
+        
+        // Q7: Time-Based Blind SQLi (Controleert op T_SLEEP keyword, harde blokkade)
+        "SELECT id FROM users WHERE EXISTS (SELECT 1 FROM accounts WHERE user_id=users.id AND balance > IF(1=1, SLEEP(3), 0));",
+>>>>>>> abf6cda84c99297d446ba5475538d25ed3f8cd28
 
         // 25. The "Capitalization" trick
         // SCENARIO: Je code doet `transform(..., ::toupper)` voor 'TRUE', maar doet hij dat ook voor de query 'Or'?
