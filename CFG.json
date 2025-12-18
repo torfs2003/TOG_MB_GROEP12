@@ -1,7 +1,8 @@
 {
   "Variables": [
     "script", "statement_list", "statement", "block_statement", "opt_with_clause", "cte_list", 
-    "cte_element", "opt_column_names", "column_name_list", "main_statement", 
+    "matched_main_statement", "unmatched_main_statement", "matched_ddl_statement", "unmatched_ddl_statement", "matched_create_stmt", "unmatched_create_stmt", "common_main_statement",
+    "cte_element", "opt_column_names", "column_name_list", 
     "C", "E", "C_Expression", "C_Term", "C_Factor", "C_Relational", 
     "E_Bitwise", "E_Add", "E_Mult", "E_Unary", "E_Primary", 
     "B", "bit_op", "quantifier",
@@ -12,18 +13,18 @@
     "opt_where", "opt_group", "opt_having", "opt_order", 
     "opt_top", "opt_distinct", "opt_into", "column_list", 
     "col_item", "opt_enforcement", "table_ref_list", "table_ref", "table_factor", 
-    "join_type", "join_condition", "order_list",
+    "join_type", "join_condition", "order_list", "matched_statement",
     "grant_statement", "revoke_statement", "privilege_list", "privilege", "waitfor_statement",
     "order_item", "opt_dir", "insert_statement", "insert_source", 
     "multi_row_values", "row_value", "update_statement", "assignment_list", 
-    "delete_statement", "ddl_statement", "truncate_stmt", "create_stmt", 
+    "delete_statement", "truncate_stmt", 
     "drop_stmt", "alter_stmt", "alter_action_list", "alter_action", "backup_statement", "def_list", 
     "col_def", "data_type", "base_type", "opt_type_params", "opt_constraints", 
     "constraint", "table_constraint", "opt_if_exists", "opt_limit_clause",
     "uid", "opt_pcomma", "opt_ref_actions", "ref_action_list", "ref_action", "action_rule"
   ],
   "Terminals": [
-    "T_EOF", "T_PCOMMA", "T_WITH", "T_COMMA", "T_ID", "T_AS", 
+    "T_PCOMMA", "T_WITH", "T_COMMA", "T_ID", "T_AS", 
     "T_LPAREN", "T_RPAREN", "T_OR", "T_AND", "T_NOT", "T_IS", "T_NULL", 
     "T_BETWEEN", "T_IN", "T_EXISTS", "T_ADD", "T_MINUS", "T_MINUS_KEYWORD", "T_STAR", "T_DIVIDE", 
     "T_PERCENT", "T_DOT", "T_CASCADE", "T_RESTRICT", "T_ACTION", "T_NO",
@@ -48,37 +49,11 @@
     "T_REFERENCES", "T_AUTOINCREMENT", "T_UNIQUE", "T_CHECK",
     "T_ROWS", "T_RANGE", "T_UNBOUNDED", "T_PRECEDING", "T_FOLLOWING", "T_CURRENT", "T_ROW", "T_IF",
     "T_GRANT", "T_REVOKE", "T_TO", "T_WAITFOR", "T_DELAY", "T_TIME_LITERAL",
-    "T_HEX", "T_LIMIT", "T_OFFSET", "T_XOR", "T_SLEEP", "T_BENCHMARK"
+    "T_HEX", "T_LIMIT", "T_OFFSET", "T_XOR", "T_SLEEP", "T_BENCHMARK", "T_USER", "T_VALUE", "T_NAME"
   ],
-  "Precedence": {
-    "T_OR": { "level": 1, "assoc": "LEFT" },
-    "T_XOR": { "level": 1, "assoc": "LEFT" },
-    "T_AND": { "level": 2, "assoc": "LEFT" },
-    "T_NOT": { "level": 3, "assoc": "RIGHT" },
-    "T_EQ": { "level": 4, "assoc": "NONE" },
-    "T_NEQ": { "level": 4, "assoc": "NONE" },
-    "T_LIKE": { "level": 4, "assoc": "NONE" },
-    "T_NOT_LIKE": { "level": 4, "assoc": "NONE" },
-    "T_IN": { "level": 4, "assoc": "NONE" },
-    "T_NOT_IN": { "level": 4, "assoc": "NONE" },
-    "T_IS": { "level": 4, "assoc": "NONE" }, 
-    "T_LT": { "level": 4, "assoc": "NONE" },
-    "T_GT": { "level": 4, "assoc": "NONE" },
-    "T_LTE": { "level": 4, "assoc": "NONE" },
-    "T_GTE": { "level": 4, "assoc": "NONE" },
-    "T_PIPE": { "level": 5, "assoc": "LEFT" },
-    "T_CONCAT_OP": { "level": 5, "assoc": "LEFT" },
-    "T_AMP": { "level": 5, "assoc": "LEFT" },
-    "T_CARET": { "level": 5, "assoc": "LEFT" },
-    "T_ADD": { "level": 6, "assoc": "LEFT" },
-    "T_MINUS": { "level": 6, "assoc": "LEFT" },
-    "T_STAR": { "level": 7, "assoc": "LEFT" },
-    "T_DIVIDE": { "level": 7, "assoc": "LEFT" },
-    "T_PERCENT": { "level": 7, "assoc": "LEFT" }
-  },
   "Start": "script",
   "Productions": [
-    {"head": "script", "body": ["statement_list", "opt_pcomma", "T_EOF"]},
+    {"head": "script", "body": ["statement_list", "opt_pcomma"]},
 
     {"head": "statement_list", "body": ["statement_list", "T_PCOMMA", "statement"]},
     {"head": "statement_list", "body": ["statement"]},
@@ -86,8 +61,20 @@
     {"head": "opt_pcomma", "body": ["T_PCOMMA"]},
     {"head": "opt_pcomma", "body": []},
 
-    {"head": "statement", "body": ["opt_with_clause", "main_statement"]},
+    {"head": "statement", "body": ["matched_statement"]},
+    {"head": "statement", "body": ["unmatched_statement"]},
     {"head": "block_statement", "body": ["T_BEGIN", "statement_list", "opt_pcomma", "T_END"]},
+
+    {"head": "matched_statement", "body": ["opt_with_clause", "matched_main_statement"]},    
+    {"head": "matched_statement", "body": ["T_IF", "T_LPAREN", "C", "T_RPAREN", "matched_statement", "T_ELSE", "matched_statement"]},    
+    {"head": "unmatched_statement", "body": ["T_IF", "T_LPAREN", "C", "T_RPAREN", "statement"]},
+    {"head": "unmatched_statement", "body": ["T_IF", "T_LPAREN", "C", "T_RPAREN", "matched_statement", "T_ELSE", "unmatched_statement"]},
+    {"head": "unmatched_statement", "body": ["opt_with_clause", "unmatched_main_statement"]},
+    
+    {"head": "matched_main_statement", "body": ["common_main_statement"]},
+    {"head": "matched_main_statement", "body": ["matched_ddl_statement"]},
+    
+    {"head": "unmatched_main_statement", "body": ["unmatched_ddl_statement"]},
 
     {"head": "opt_with_clause", "body": ["T_WITH", "cte_list"]},
     {"head": "opt_with_clause", "body": []},
@@ -119,16 +106,15 @@
     {"head": "column_name_list", "body": ["column_name_list", "T_COMMA", "uid"]},
 
 
-    {"head": "main_statement", "body": ["select_statement"]},
-    {"head": "main_statement", "body": ["insert_statement"]},
-    {"head": "main_statement", "body": ["update_statement"]},
-    {"head": "main_statement", "body": ["delete_statement"]},
-    {"head": "main_statement", "body": ["ddl_statement"]},
-    {"head": "main_statement", "body": ["backup_statement"]},
-    {"head": "main_statement", "body": ["block_statement"]},
-    {"head": "main_statement", "body": ["grant_statement"]},
-    {"head": "main_statement", "body": ["revoke_statement"]},
-    {"head": "main_statement", "body": ["waitfor_statement"]},
+    {"head": "common_main_statement", "body": ["select_statement"]},
+    {"head": "common_main_statement", "body": ["insert_statement"]},
+    {"head": "common_main_statement", "body": ["update_statement"]},
+    {"head": "common_main_statement", "body": ["delete_statement"]},
+    {"head": "common_main_statement", "body": ["backup_statement"]},
+    {"head": "common_main_statement", "body": ["block_statement"]},
+    {"head": "common_main_statement", "body": ["grant_statement"]},
+    {"head": "common_main_statement", "body": ["revoke_statement"]},
+    {"head": "common_main_statement", "body": ["waitfor_statement"]},
 
     {"head": "C", "body": ["C_Expression"]},
     {"head": "E", "body": ["C_Expression"]},
@@ -168,6 +154,7 @@
     {"head": "E_Mult", "body": ["E_Unary"]},
 
     {"head": "E_Unary", "body": ["T_MINUS", "E_Unary"]},
+    {"head": "E_Unary", "body": ["T_ADD", "E_Unary"]},
     {"head": "E_Unary", "body": ["E_Primary"]},
 
     {"head": "E_Primary", "body": ["uid"]},
@@ -199,6 +186,10 @@
     {"head": "uid", "body": ["T_TIME"]},
     {"head": "uid", "body": ["T_YEAR"]},
     {"head": "uid", "body": ["T_TEXT"]},
+    {"head": "uid", "body": ["T_BACKUP"]},
+    {"head": "uid", "body": ["T_USER"]}, 
+    {"head": "uid", "body": ["T_VALUE"]},
+    {"head": "uid", "body": ["T_NAME"]},
 
     {"head": "B", "body": ["T_EQ"]},
     {"head": "B", "body": ["T_NEQ"]},
@@ -344,6 +335,7 @@
     {"head": "table_factor", "body": ["uid", "T_DOT", "uid", "uid"]}, 
     {"head": "table_factor", "body": ["uid", "T_AS", "uid"]},
     {"head": "table_factor", "body": ["uid", "T_DOT", "uid", "T_AS", "uid"]}, 
+    {"head": "table_factor", "body": ["T_LPAREN", "table_ref", "T_RPAREN"]},
     {"head": "table_factor", "body": ["T_LPAREN", "select_statement", "T_RPAREN"]},
     {"head": "table_factor", "body": ["T_LPAREN", "select_statement", "T_RPAREN", "uid"]},
     {"head": "table_factor", "body": ["T_LPAREN", "select_statement", "T_RPAREN", "T_AS", "uid"]},
@@ -376,6 +368,7 @@
 
     {"head": "insert_source", "body": ["T_VALUES", "multi_row_values"]},
     {"head": "insert_source", "body": ["select_statement"]},
+    {"head": "insert_source", "body": ["T_DEFAULT", "T_VALUES"]},
 
     {"head": "multi_row_values", "body": ["row_value"]},
     {"head": "multi_row_values", "body": ["multi_row_values", "T_COMMA", "row_value"]},
@@ -389,18 +382,23 @@
 
     {"head": "delete_statement", "body": ["T_DELETE", "opt_top", "T_FROM", "uid", "opt_where"]},
 
-    {"head": "ddl_statement", "body": ["create_stmt"]},
-    {"head": "ddl_statement", "body": ["drop_stmt"]},
-    {"head": "ddl_statement", "body": ["alter_stmt"]},
-    {"head": "ddl_statement", "body": ["truncate_stmt"]},
+    {"head": "matched_ddl_statement", "body": ["matched_create_stmt"]},
+    {"head": "matched_ddl_statement", "body": ["drop_stmt"]},
+    {"head": "matched_ddl_statement", "body": ["alter_stmt"]},
+    {"head": "matched_ddl_statement", "body": ["truncate_stmt"]},
+
+    {"head": "unmatched_ddl_statement", "body": ["unmatched_create_stmt"]},
 
     {"head": "truncate_stmt", "body": ["T_TRUNCATE", "T_TABLE", "uid"]},
 
-    {"head": "create_stmt", "body": ["T_CREATE", "uid", "uid"]},
-    {"head": "create_stmt", "body": ["T_CREATE", "T_TABLE", "uid", "T_LPAREN", "def_list", "T_RPAREN"]},
-    {"head": "create_stmt", "body": ["T_CREATE", "T_INDEX", "uid", "T_ON", "uid", "T_LPAREN", "column_list", "T_RPAREN"]},
-    {"head": "create_stmt", "body": ["T_CREATE", "T_VIEW", "uid", "T_AS", "select_statement"]},
-    {"head": "create_stmt", "body": ["T_CREATE", "T_PROCEDURE", "uid", "T_AS", "statement"]},
+    {"head": "matched_create_stmt", "body": ["T_CREATE", "uid", "uid"]},
+    {"head": "matched_create_stmt", "body": ["T_CREATE", "T_TABLE", "uid", "T_LPAREN", "def_list", "T_RPAREN"]},
+    {"head": "matched_create_stmt", "body": ["T_CREATE", "T_INDEX", "uid", "T_ON", "uid", "T_LPAREN", "column_list", "T_RPAREN"]},
+    {"head": "matched_create_stmt", "body": ["T_CREATE", "T_VIEW", "uid", "T_AS", "select_statement"]},
+    {"head": "matched_create_stmt", "body": ["T_CREATE", "T_PROCEDURE", "uid", "T_AS", "matched_statement"]},
+
+    {"head": "unmatched_create_stmt", "body": ["T_CREATE", "T_PROCEDURE", "uid", "T_AS", "unmatched_statement"]},
+
     {"head": "drop_stmt", "body": ["T_DROP", "uid", "opt_if_exists", "uid"]},
     {"head": "drop_stmt", "body": ["T_DROP", "T_TABLE", "opt_if_exists", "uid"]},
     {"head": "drop_stmt", "body": ["T_DROP", "T_INDEX", "opt_if_exists", "uid"]},

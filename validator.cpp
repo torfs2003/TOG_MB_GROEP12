@@ -172,6 +172,12 @@ SimpleLexer::SimpleLexer() {
     keywords["PRECEDING"] = "T_PRECEDING";
     keywords["OUTER"] = "T_OUTER";
     keywords["IF"] = "T_IF";
+    keywords["DATABASE"] = "T_DATABASE";
+    keywords["WAITFOR"] = "T_WAITFOR";
+    keywords["DELAY"] = "T_DELAY";
+    keywords["USER"] = "T_USER";
+    keywords["VALUE"] = "T_VALUE";
+    keywords["NAME"] = "T_NAME";
 
     // Mapping van leestekens
     symbols['*'] = "T_STAR";    symbols[','] = "T_COMMA";
@@ -273,10 +279,22 @@ vector<Token> SimpleLexer::tokenize(string input) {
             continue;
         }
 
-        //Tijd Literalen
-        if (isdigit(c) && i + 1 < input.length() && input[i+1] == ':') {
+        //  Tijd Literalen
+        bool isTimeStart = false;
+        if (isdigit(c)) {
+            // Check voor H:MM
+            if (i + 1 < input.length() && input[i+1] == ':') {
+                isTimeStart = true;
+            }
+            // Check voor HH:MM
+            else if (i + 2 < input.length() && isdigit(input[i+1]) && input[i+2] == ':') {
+                isTimeStart = true;
+            }
+        }
+
+        if (isTimeStart) {
             string timeStr;
-            int k = i; // Hulpcursor
+            int k = i;
             int colonCount = 0;
             
             // Scan voor het volledige mogelijke tijdspatroon
@@ -285,21 +303,53 @@ vector<Token> SimpleLexer::tokenize(string input) {
                 timeStr += input[k++];
             }
             
-            // Alleen tokeniseren en cursor verplaatsen als het een geldige tijdsliteraal is
-            if (colonCount >= 2) { 
+            char last = timeStr.back();
+            if (colonCount >= 1 && last != ':' && last != '.') { 
                 tokens.push_back({"T_TIME_LITERAL", timeStr});
-                i = k; // Hoofdcursor verplaatst
+                i = k;
                 continue;
             }
         }
 
         // Getallen
-        if (isdigit(c)) {
+        bool isNumberStart = isdigit(c);
+        if (!isNumberStart && (c == '+' || c == '-') && i + 1 < input.length() && isdigit(input[i+1])) {
+             isNumberStart = true;
+        }
+
+        if (isNumberStart) {
             string num;
             bool isFloat = false;
-            while (i < input.length() && (isdigit(input[i]) || input[i] == '.')) {
-                if (input[i] == '.') isFloat = true;
-                num += input[i++];
+            
+            if (c == '+' || c == '-') {
+                num += c;
+                i++;
+            }
+
+            while (i < input.length()) {
+                char next = input[i];
+                
+                if (isdigit(next)) {
+                    num += next;
+                    i++;
+                } 
+                else if (next == '.') {
+                    isFloat = true;
+                    num += next;
+                    i++;
+                }
+                // Scientific Notation (E-notatie)
+                else if (next == 'e' || next == 'E') {
+                    isFloat = true;
+                    num += next;
+                    i++;
+                    if (i < input.length() && (input[i] == '+' || input[i] == '-')) {
+                        num += input[i++];
+                    }
+                } 
+                else {
+                    break;
+                }
             }
             tokens.push_back({isFloat ? "T_FLOAT" : "T_INT", num});
             continue;
@@ -395,15 +445,20 @@ vector<Token> SimpleLexer::tokenize(string input) {
             string s;
             i++;
             while (i < input.length()) {
-                if (input[i] == '\'' && i + 1 < input.length() && input[i+1] == '\'') {
-                    s += "'";
+                if (input[i] == '\\' && i + 1 < input.length()) {
+                    s += input[i+1];
                     i += 2;
-                } 
-                else if (input[i] == '\'') {
-                    i++; 
-                    break;
-                } 
-                else {
+                    continue;
+                }
+                if (input[i] == '\'') {
+                    if (i + 1 < input.length() && input[i+1] == '\'') {
+                        s += "'";
+                        i += 2;
+                    } else {
+                        i++; 
+                        break;
+                    }
+                } else {
                     s += input[i++];
                 }
             }
@@ -687,8 +742,15 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole ro
     for (const auto& t : tokens) {
         if (t.type == "T_WAITFOR" || t.type == "T_DELAY" ||
             t.type == "T_SLEEP" || t.type == "T_BENCHMARK") {
-            addFinding(SEV_CRITICAL_HARD_BLOCK,
-                         "Time-Based Function/Keyword (" + t.value + ") detected. DOS/Stealth risk.");
+            
+            // ADMIN mag dit eventueel voor maintenance, anderen absoluut niet.
+            if (role != ROLE_ADMIN) {
+                addFinding(SEV_CRITICAL_HARD_BLOCK,
+                           "Time-Based Function/Keyword (" + t.value + ") detected. DOS/Stealth risk.");
+            } else {
+                addFinding(SEV_LOW_SUSPICIOUS, 
+                           "Time-Based Function detected (Admin). Permitted but logged.");
+            }
         }
     }
 
@@ -852,10 +914,32 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole ro
     }
 
     // 6. Comment truncation attacks
-    if ((query.find("'--") != string::npos || query.find("'/*") != string::npos) && role != ROLE_ADMIN) {
-        addFinding(SEV_HIGH_RISK, "String terminated before comment. Possible truncation attack.");
+    bool insideQuote = false;
+    for (size_t k = 0; k < query.length(); k++) {
+        if (query[k] == '\'') {
+            insideQuote = !insideQuote;
+            
+            // We hebben net een quote gesloten (insideQuote is nu false)
+            // Kijk nu vooruit wat er volgt.
+            if (!insideQuote) {
+                size_t next = k + 1;
+                // Skip witruimte
+                while (next < query.length() && isspace(query[next])) next++;
+                
+                // Check of we nu een commentaar start zien (-- of /*)
+                if (next + 1 < query.length()) {
+                    bool isDashComment = (query[next] == '-' && query[next+1] == '-');
+                    bool isBlockComment = (query[next] == '/' && query[next+1] == '*');
+                    
+                    if (isDashComment || isBlockComment) {
+                        if (role != ROLE_ADMIN) {
+                            addFinding(SEV_HIGH_RISK, "String terminated followed by comment. Truncation attack detected.");
+                        }
+                    }
+                }
+            }
+        }
     }
-
     // 7. Risk scoring
     if (this->findings.empty()) { 
         cout << "    [Security Scan] No obvious signatures found." << endl;
