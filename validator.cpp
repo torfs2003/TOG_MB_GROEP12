@@ -789,12 +789,83 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole ro
             }
         }
         
-        // mogelijke tautologie/Boolean SQLi vangen
-        if (type == "T_OR" && ctx == SqlContext::WHERE) {
-            if (role != ROLE_ADMIN) {
-                addFinding(SEV_CRITICAL_HARD_BLOCK, "OR operator in WHERE clause. Potential boolean-based SQLi.");
-            } else {
-                addFinding(SEV_LOW_SUSPICIOUS, "OR operator in WHERE clause (Admin).");
+        // tautologie detectie: OR gevolgd door tautologie patronen
+        if (type == "T_OR" && ctx == SqlContext::WHERE && i + 1 < tokens.size()) {
+            string nextType = tokens[i+1].type;
+            string nextVal = tokens[i+1].value;
+            string nextUpper = nextVal;
+            transform(nextUpper.begin(), nextUpper.end(), nextUpper.begin(), ::toupper);
+            
+            bool tautologyFound = false;
+            
+            // OR TRUE
+            if (nextUpper == "TRUE" || nextType == "T_BOOLEAN") {
+                addFinding(SEV_CRITICAL_HARD_BLOCK, "Tautology: OR TRUE detected.");
+                tautologyFound = true;
+            }
+            // OR niet-nul
+            else if (nextType == "T_INT" && nextVal != "0" && 
+                     (i + 2 >= tokens.size() || 
+                      (tokens[i+2].type != "T_EQ" && tokens[i+2].type != "T_LT" && 
+                       tokens[i+2].type != "T_GT" && tokens[i+2].type != "T_NEQ" &&
+                       tokens[i+2].type != "T_LTE" && tokens[i+2].type != "T_GTE"))) {
+                addFinding(SEV_CRITICAL_HARD_BLOCK, "Tautology: OR " + nextVal + " non-zero detected.");
+                tautologyFound = true;
+            }
+            // OR x=x, OR 1=1, OR 'a'='a', OR 1<2, ...
+            else if (i + 3 < tokens.size()) {
+                string t1 = tokens[i+1].type;
+                string t2 = tokens[i+2].type;
+                string t3 = tokens[i+3].type;
+                string v1 = tokens[i+1].value;
+                string v3 = tokens[i+3].value;
+                
+                bool isComparison = (t2 == "T_EQ" || t2 == "T_LT" || t2 == "T_GT" || 
+                                     t2 == "T_LTE" || t2 == "T_GTE" || t2 == "T_NEQ");
+                
+                if (isComparison) {
+                    // OR literal=literal (1=1, 'a'='a')
+                    if (t1 == t3 && v1 == v3 && (t1 == "T_INT" || t1 == "T_STRING" || t1 == "T_FLOAT")) {
+                        addFinding(SEV_CRITICAL_HARD_BLOCK, 
+                            "Tautology: OR " + v1 + tokens[i+2].value + v3 + " (same literals)");
+                        tautologyFound = true;
+                    }
+                    // OR id=id (zelfde identifier)
+                    else if (t1 == "T_ID" && t3 == "T_ID" && v1 == v3) {
+                        addFinding(SEV_CRITICAL_HARD_BLOCK, 
+                            "Tautology: OR " + v1 + "=" + v3 + " (same identifier)");
+                        tautologyFound = true;
+                    }
+                    // OR 1<2, OR 2>1 (altijd-true vergelijkingen)
+                    else if (t1 == "T_INT" && t3 == "T_INT") {
+                        int left = stoi(v1);
+                        int right = stoi(v3);
+                        bool alwaysTrue = false;
+                        
+                        if (t2 == "T_LT" && left < right) alwaysTrue = true;
+                        else if (t2 == "T_GT" && left > right) alwaysTrue = true;
+                        else if (t2 == "T_LTE" && left <= right) alwaysTrue = true;
+                        else if (t2 == "T_GTE" && left >= right) alwaysTrue = true;
+                        else if (t2 == "T_NEQ" && left != right) alwaysTrue = true;
+                        
+                        if (alwaysTrue) {
+                            addFinding(SEV_CRITICAL_HARD_BLOCK, 
+                                "Tautology: OR " + v1 + tokens[i+2].value + v3 + " (always true)");
+                            tautologyFound = true;
+                        }
+                    }
+                }
+            }
+            
+            // als geen specifieke tautologie gevonden werd, gewoon warning geven
+            if (!tautologyFound) {
+                if (role == ROLE_CLIENT) {
+                    addFinding(SEV_HIGH_RISK, "OR operator in WHERE clause. Potential boolean-based SQLi.");
+                } else if (role == ROLE_EMPLOYEE) {
+                    addFinding(SEV_MEDIUM_PRIVILEGE, "OR operator in WHERE clause (Employee). Monitor for SQLi.");
+                } else {
+                    addFinding(SEV_LOW_SUSPICIOUS, "OR operator in WHERE clause (Admin).");
+                }
             }
         }
 
@@ -877,7 +948,7 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole ro
     // Alert display
     sort(this->findings.begin(), this->findings.end(), [](auto& a, auto& b){ return a.severity < b.severity; }); 
     for (auto& f : this->findings) { 
-        if (f.severity >= SEV_HIGH_RISK) {
+        if (f.severity <= SEV_HIGH_RISK) {
             cout << "  --> \033[1;31m[ALERT]\033[0m " << f.message << endl;
         }
     }

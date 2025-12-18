@@ -25,8 +25,29 @@ int main() {
 
         // === 2. KRITISCHE BEVEILIGINGSVECTOREN (Moet BLOKKEREN) ===
 
-        // Q5: Tautologie / Boolean-Based SQLi (Controle op OR in WHERE context)
+        // Q5a: Tautologie / Boolean-Based SQLi (Controle op OR in WHERE context)
         "SELECT * FROM users WHERE user_id = 1 OR 1=1;",
+
+        // Q5b: String tautologie
+        "SELECT * FROM users WHERE username = 'admin' OR 'a'='a';",
+        
+        // Q5c: Altijd-true (1<2)
+        "SELECT * FROM users WHERE id = 5 OR 1<2;",
+        
+        // Q5d: OR TRUE
+        "SELECT * FROM users WHERE active = 0 OR TRUE;",
+        
+        // Q5e: OR niet-nul nummer
+        "SELECT * FROM users WHERE id = 999 OR 1;",
+        
+        // Q5f: Zelfde identifier
+        "SELECT * FROM users WHERE password = 'test' OR id=id;",
+        
+        // Q5g: Groter dan (2>1)
+        "SELECT * FROM accounts WHERE balance < 100 OR 2>1;",
+        
+        // Q5h: Niet gelijk aan (1!=2)
+        "SELECT * FROM users WHERE role = 'guest' OR 1!=2;",
 
         // Q6: Stacked Query (Moet hard blokkeren bij dubbele ;)
         "SELECT id FROM users; DELETE FROM accounts WHERE balance = 0;",
