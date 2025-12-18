@@ -1,8 +1,7 @@
 #ifndef LALRPARSER_H
 #define LALRPARSER_H
-#include <string>
-#include <unordered_map>
-#include <vector>
+
+#include "common.h"
 #include "../core/Token.h"
 
 struct ParserAction {

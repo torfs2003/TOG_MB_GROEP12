@@ -82,7 +82,7 @@
     {"head": "cte_list", "body": ["cte_element"]},
     {"head": "cte_list", "body": ["cte_list", "T_COMMA", "cte_element"]},
 
-    {"head": "cte_element", "body": ["uid", "opt_column_names", "T_AS", "T_LPAREN", "select_query", "T_RPAREN"]},
+    {"head": "cte_element", "body": ["uid", "opt_column_names", "T_AS", "T_LPAREN", "select_statement", "T_RPAREN"]},
 
     {"head": "grant_statement", "body": ["T_GRANT", "privilege_list", "T_ON", "uid", "T_TO", "uid"]},
     {"head": "revoke_statement", "body": ["T_REVOKE", "privilege_list", "T_ON", "uid", "T_FROM", "uid"]},
@@ -169,6 +169,8 @@
     {"head": "E_Primary", "body": ["T_NOT_NULL"]},
     {"head": "E_Primary", "body": ["T_DATE_LIT"]},
     {"head": "E_Primary", "body": ["T_TIME_LITERAL"]},
+    {"head": "E_Primary", "body": ["T_INTERVAL", "T_STRING", "uid"]}, 
+    {"head": "E_Primary", "body": ["T_INTERVAL", "T_STRING"]},
     {"head": "E_Primary", "body": ["T_DEFAULT"]},
     {"head": "E_Primary", "body": ["T_UNDERSCORE"]},
     {"head": "E_Primary", "body": ["T_PLACEHOLDER"]},
@@ -395,10 +397,12 @@
     {"head": "matched_create_stmt", "body": ["T_CREATE", "T_TABLE", "uid", "T_LPAREN", "def_list", "T_RPAREN"]},
     {"head": "matched_create_stmt", "body": ["T_CREATE", "T_INDEX", "uid", "T_ON", "uid", "T_LPAREN", "column_list", "T_RPAREN"]},
     {"head": "matched_create_stmt", "body": ["T_CREATE", "T_VIEW", "uid", "T_AS", "select_statement"]},
+    {"head": "matched_create_stmt", "body": ["T_CREATE", "T_PROCEDURE", "uid", "T_AS", "block_statement"]},
     {"head": "matched_create_stmt", "body": ["T_CREATE", "T_PROCEDURE", "uid", "T_AS", "matched_statement"]},
 
     {"head": "unmatched_create_stmt", "body": ["T_CREATE", "T_PROCEDURE", "uid", "T_AS", "unmatched_statement"]},
-
+    {"head": "unmatched_create_stmt", "body": ["T_CREATE", "T_PROCEDURE", "uid", "T_AS", "block_statement"]},
+    
     {"head": "drop_stmt", "body": ["T_DROP", "uid", "opt_if_exists", "uid"]},
     {"head": "drop_stmt", "body": ["T_DROP", "T_TABLE", "opt_if_exists", "uid"]},
     {"head": "drop_stmt", "body": ["T_DROP", "T_INDEX", "opt_if_exists", "uid"]},

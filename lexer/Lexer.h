@@ -1,8 +1,7 @@
 #ifndef LEXER_H
 #define LEXER_H
-#include <string>
-#include <unordered_map>
-#include <vector>
+
+#include "common.h"
 #include "../core/Token.h"
 
 // Eenvoudige lexer die een SQL string omzet in tokens.

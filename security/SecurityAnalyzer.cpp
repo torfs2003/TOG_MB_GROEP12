@@ -1,23 +1,22 @@
 #include "SecurityAnalyzer.h"
-
 #include <algorithm>
-#include <iostream>
+#include <cctype>
 
-bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRole role) {
-    std::cout << "    [Security Scan] Scanning for attack patterns (Context-Aware)..." << std::endl;
+bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, string query, UserRole role) {
+    cout << "    [Security Scan] Scanning for attack patterns (Context-Aware)..." << endl;
 
     // Resetten van de bevindingen voor deze query.
     this->findings.clear();
-
+        
     // De 'addFinding' lambda moet de klasse-variabele gebruiken.
-    auto addFinding = [&](AlertSeverity sev, const std::string& msg) {
+    auto addFinding = [&](AlertSeverity sev, const string& msg) {
         this->findings.push_back({sev, msg});
     };
 
-    std::vector<Token> tokens = lexer.tokenize(query);
+    vector<Token> tokens = lexer.tokenize(query);
 
     SqlContext ctx = SqlContext::NONE;
-    auto updateContext = [&](const std::string& t) {
+    auto updateContext = [&](const string& t) {
         if (t == "T_SELECT") ctx = SqlContext::SELECT_LIST;
         else if (t == "T_FROM") ctx = SqlContext::FROM;
         else if (t == "T_WHERE") ctx = SqlContext::WHERE;
@@ -29,30 +28,46 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRo
         else if (t == "T_SET") ctx = SqlContext::UPDATE_SET;
     };
 
+    // 0. Pre-Scan: Detecteer Scripting/HTML injectie (XSS Polyglots)
+    string qLower = query;
+    transform(qLower.begin(), qLower.end(), qLower.begin(), ::tolower);
+
+    if (qLower.find("<script") != string::npos || 
+        qLower.find("alert(") != string::npos || 
+        qLower.find("javascript:") != string::npos) {
+        addFinding(SEV_CRITICAL_HARD_BLOCK, "Non-SQL scripting fragment detected (Potential XSS/Polyglot).");
+    }
 
     // 1. // Harde Blokkades (time-based functions)
     for (const auto& t : tokens) {
         if (t.type == "T_WAITFOR" || t.type == "T_DELAY" ||
             t.type == "T_SLEEP" || t.type == "T_BENCHMARK") {
-            addFinding(SEV_CRITICAL_HARD_BLOCK,
-                         "Time-Based Function/Keyword (" + t.value + ") detected. DOS/Stealth risk.");
+            
+            // ADMIN mag dit eventueel voor maintenance, anderen absoluut niet.
+            if (role != ROLE_ADMIN) {
+                addFinding(SEV_CRITICAL_HARD_BLOCK,
+                           "Time-Based Function/Keyword (" + t.value + ") detected. DOS/Stealth risk.");
+            } else {
+                addFinding(SEV_LOW_SUSPICIOUS, 
+                           "Time-Based Function detected (Admin). Permitted but logged.");
+            }
         }
     }
 
 
     // 2. System schema toegang
-    std::string qUpper = query;
+    string qUpper = query;
     transform(qUpper.begin(), qUpper.end(), qUpper.begin(), ::toupper);
-    if (qUpper.find("INFORMATION_SCHEMA") != std::string::npos ||
-        qUpper.find("PG_CATALOG") != std::string::npos) {
+    if (qUpper.find("INFORMATION_SCHEMA") != string::npos ||
+        qUpper.find("PG_CATALOG") != string::npos) {
         addFinding(SEV_HIGH_RISK, "System schema access detected. Possible enumeration.");
     }
 
     // 3. Multi-statement detectie
     size_t firstSemicolon = query.find(";");
-    size_t secondSemicolon = (firstSemicolon != std::string::npos) ? query.find(";", firstSemicolon + 1) : std::string::npos;
+    size_t secondSemicolon = (firstSemicolon != string::npos) ? query.find(";", firstSemicolon + 1) : string::npos; 
 
-    if (secondSemicolon != std::string::npos) {
+    if (secondSemicolon != string::npos) {
         if (role != ROLE_ADMIN) {
             addFinding(SEV_CRITICAL_HARD_BLOCK, "Multiple statements detected. Possible injection attempt.");
         }
@@ -64,15 +79,15 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRo
     // 4. Token-gebasseerde analyse
     for (size_t i = 0; i < tokens.size(); i++) {
         updateContext(tokens[i].type);
-        std::string type = tokens[i].type;
-        std::string value = tokens[i].value;
+        string type = tokens[i].type;
+        string value = tokens[i].value;
 
         bool isHex = type == "T_HEX" || (value.size() > 2 && (value.substr(0,2) == "0x" || value.substr(0,2) == "0X"));
 
 
         // SELECT INTO detectie
         if (type == "T_INTO") {
-            std::string firstCmd = tokens.front().type;
+            string firstCmd = tokens.front().type;
             if (firstCmd == "T_LPAREN" && tokens.size() > 1) firstCmd = tokens[1].type;
             if (firstCmd == "T_SELECT" || firstCmd == "T_WITH") {
                 if (role == ROLE_ADMIN) {
@@ -87,7 +102,7 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRo
         }
 
         if (type == "T_SELECT" && i > 0 && tokens[i-1].type == "T_LPAREN") {
-
+            
             // Stap A: Bepaal of deze subquery in een 'veilige' filtercontext staat (EXISTS/IN)
             bool isSafeFilter = false;
             for (int j = i - 2; j >= 0; --j) {
@@ -101,9 +116,9 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRo
             // Stap B: Blokkeren/waarschuwen als het GEEN veilige filter is.
             if (!isSafeFilter) {
                 if (role == ROLE_CLIENT) {
-                    addFinding(SEV_CRITICAL_HARD_BLOCK, "Complex Scalar Subquery detected. Hard block for read-only role.");
+                    addFinding(SEV_CRITICAL_HARD_BLOCK, "Complex Scalar Subquery detected. Hard block for read-only role."); 
                 } else if (role == ROLE_EMPLOYEE) {
-                    addFinding(SEV_HIGH_RISK, "Complex Scalar Subquery detected (Employee). High risk.");
+                    addFinding(SEV_HIGH_RISK, "Complex Scalar Subquery detected (Employee). High risk."); 
                 }
             }
         }
@@ -112,13 +127,13 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRo
         if (type == "T_UNION") {
             if (role == ROLE_CLIENT) {
                 addFinding(SEV_CRITICAL_HARD_BLOCK, "UNION operator detected. Hard block for read-only role.");
-            }
+            } 
             else if (role == ROLE_EMPLOYEE) {
                 addFinding(SEV_CRITICAL_HARD_BLOCK, "UNION operator detected. Hard block for employee.");
-            }
+            } 
             else if (role == ROLE_ADMIN && (ctx == SqlContext::SELECT_LIST || ctx == SqlContext::WHERE)) {
                 addFinding(SEV_LOW_SUSPICIOUS, "UNION operator in sensitive context (Admin). Monitor for exfiltration.");
-            }
+            } 
             else {
                 addFinding(SEV_LOW_SUSPICIOUS, "UNION operator detected (Admin).");
             }
@@ -137,81 +152,158 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRo
         }
 
         // tautologie detectie: OR gevolgd door tautologie patronen
-        if (type == "T_OR" && ctx == SqlContext::WHERE && i + 1 < tokens.size()) {
-            std::string nextType = tokens[i+1].type;
-            std::string nextVal = tokens[i+1].value;
-            std::string nextUpper = nextVal;
+        if (type == "T_OR" && ctx == SqlContext::WHERE) {
+            
+            // 1. SKIP HAAKJES (Deep Nesting Fix)
+            // Dit fixt de bypass van OR(1=1) en deep nesting
+            int offset = 1;
+            while (i + offset < tokens.size() && tokens[i + offset].type == "T_LPAREN") {
+                offset++;
+            }
+
+            // Safety check: niet buiten de vector lezen (fix voor dangling OR)
+            if (i + offset >= tokens.size()) {
+                addFinding(SEV_CRITICAL_HARD_BLOCK, "Dangling OR detected (Incomplete Query).");
+                continue; 
+            }
+
+            Token nextToken = tokens[i + offset];
+            string nextType = nextToken.type;
+            string nextVal = nextToken.value;
+            string nextUpper = nextVal;
             transform(nextUpper.begin(), nextUpper.end(), nextUpper.begin(), ::toupper);
 
             bool tautologyFound = false;
 
+            // Strict Structurele check: OR gevolgd door Literal
+            // Valide SQL na een OR begint bijna altijd met een kolomnaam (T_ID).
+            bool isLiteral = (nextType == "T_INT" || nextType == "T_STRING" || 
+                              nextType == "T_FLOAT" || nextType == "T_HEX");
+
+            if (isLiteral) {
+                addFinding(SEV_CRITICAL_HARD_BLOCK, 
+                    "Structural Violation: OR clause starts with Literal (" + nextToken.value + "). Expected Column Name.");
+                tautologyFound = true;
+            }
+
+            // DETECTIE: CAST Bypass en Rekenkundige injectie
+            if (nextType == "T_CAST" || nextUpper == "CAST") {
+                addFinding(SEV_CRITICAL_HARD_BLOCK, "High Risk: CAST function detected inside OR clause.");
+                tautologyFound = true;
+            }
+            else if (nextType == "T_MINUS") {
+                 addFinding(SEV_CRITICAL_HARD_BLOCK, "Suspicious arithmetic in OR clause (Negative value).");
+                 tautologyFound = true;
+            }
+
             // OR TRUE
-            if (nextUpper == "TRUE" || nextType == "T_BOOLEAN") {
+            else if (nextUpper == "TRUE" || nextType == "T_BOOLEAN") {
                 addFinding(SEV_CRITICAL_HARD_BLOCK, "Tautology: OR TRUE detected.");
                 tautologyFound = true;
             }
             // OR niet-nul
-            else if (nextType == "T_INT" && nextVal != "0" &&
-                     (i + 2 >= tokens.size() ||
-                      (tokens[i+2].type != "T_EQ" && tokens[i+2].type != "T_LT" &&
-                       tokens[i+2].type != "T_GT" && tokens[i+2].type != "T_NEQ" &&
-                       tokens[i+2].type != "T_LTE" && tokens[i+2].type != "T_GTE"))) {
-                addFinding(SEV_CRITICAL_HARD_BLOCK, "Tautology: OR " + nextVal + " non-zero detected.");
-                tautologyFound = true;
+            else if (nextType == "T_INT" && nextVal != "0") {
+                // Check of het gevolgd wordt door een vergelijking (bijv OR 1 = 5 is veilig)
+                int nextOffset = offset + 1;
+                bool isComparisonNext = false;
+                if (i + nextOffset < tokens.size()) {
+                    string tNext = tokens[i + nextOffset].type;
+                    if (tNext == "T_EQ" || tNext == "T_LT" || tNext == "T_GT" || 
+                        tNext == "T_NEQ" || tNext == "T_LTE" || tNext == "T_GTE") {
+                        isComparisonNext = true;
+                    }
+                }
+                
+                if (!isComparisonNext) {
+                    addFinding(SEV_CRITICAL_HARD_BLOCK, "Tautology: OR Non-Zero Value detected (" + nextVal + ").");
+                    tautologyFound = true;
+                }
             }
-            // OR x=x, OR 1=1, OR 'a'='a', OR 1<2, ...
-            else if (i + 3 < tokens.size()) {
-                std::string t1 = tokens[i+1].type;
-                std::string t2 = tokens[i+2].type;
-                std::string t3 = tokens[i+3].type;
-                std::string v1 = tokens[i+1].value;
-                std::string v3 = tokens[i+3].value;
 
-                bool isComparison = (t2 == "T_EQ" || t2 == "T_LT" || t2 == "T_GT" ||
-                                     t2 == "T_LTE" || t2 == "T_GTE" || t2 == "T_NEQ");
+            // OR x=x, OR 1=1, OR 'a'='a', OR 1<2, ...
+            else if (!tautologyFound && i + offset + 2 < tokens.size()) {
+                Token t1 = tokens[i + offset];     // Links
+                Token op = tokens[i + offset + 1]; // Operator
+                Token t3 = tokens[i + offset + 2]; // Rechts
+
+                bool isComparison = (op.type == "T_EQ" || op.type == "T_LT" || op.type == "T_GT" ||
+                                     op.type == "T_LTE" || op.type == "T_GTE" || op.type == "T_NEQ");
 
                 if (isComparison) {
-                    // OR literal=literal (1=1, 'a'='a')
-                    if (t1 == t3 && v1 == v3 && (t1 == "T_INT" || t1 == "T_STRING" || t1 == "T_FLOAT")) {
-                        addFinding(SEV_CRITICAL_HARD_BLOCK,
-                            "Tautology: OR " + v1 + tokens[i+2].value + v3 + " (same literals)");
-                        tautologyFound = true;
-                    }
+                    // FIX: Normaliseer waarden (strip quotes van strings)
+                    string v1_clean = t1.value;
+                    string v3_clean = t3.value;
+                    
+                    if (v1_clean.size() >= 2 && (v1_clean.front() == '\'' || v1_clean.front() == '"')) 
+                        v1_clean = v1_clean.substr(1, v1_clean.size()-2);
+                    if (v3_clean.size() >= 2 && (v3_clean.front() == '\'' || v3_clean.front() == '"')) 
+                        v3_clean = v3_clean.substr(1, v3_clean.size()-2);
+
                     // OR id=id (zelfde identifier)
-                    else if (t1 == "T_ID" && t3 == "T_ID" && v1 == v3) {
-                        addFinding(SEV_CRITICAL_HARD_BLOCK,
-                            "Tautology: OR " + v1 + "=" + v3 + " (same identifier)");
+                    if (t1.type == "T_ID" && t3.type == "T_ID" && v1_clean == v3_clean) {
+                        addFinding(SEV_CRITICAL_HARD_BLOCK, 
+                            "Tautology: OR " + v1_clean + "=" + v3_clean + " (Same Identifier).");
                         tautologyFound = true;
                     }
-                    // OR 1<2, OR 2>1 (altijd-true vergelijkingen)
-                    else if (t1 == "T_INT" && t3 == "T_INT") {
-                        int left = stoi(v1);
-                        int right = stoi(v3);
-                        bool alwaysTrue = false;
 
-                        if (t2 == "T_LT" && left < right) alwaysTrue = true;
-                        else if (t2 == "T_GT" && left > right) alwaysTrue = true;
-                        else if (t2 == "T_LTE" && left <= right) alwaysTrue = true;
-                        else if (t2 == "T_GTE" && left >= right) alwaysTrue = true;
-                        else if (t2 == "T_NEQ" && left != right) alwaysTrue = true;
+                    bool leftHasIdentifier = (t1.type == "T_ID");
+                    bool rightHasIdentifier = (t3.type == "T_ID");
 
-                        if (alwaysTrue) {
-                            addFinding(SEV_CRITICAL_HARD_BLOCK,
-                                "Tautology: OR " + v1 + tokens[i+2].value + v3 + " (always true)");
-                            tautologyFound = true;
-                        }
+                    // Als we twee dingen vergelijken (Literals of Subqueries) zonder dat er een kolomnaam bij betrokken is:
+                    if (!leftHasIdentifier && !rightHasIdentifier) {
+                        addFinding(SEV_CRITICAL_HARD_BLOCK, 
+                            "Logic Evasion Detected: Comparison between constants/subqueries without column reference.");
                     }
                 }
             }
 
-            // als geen specifieke tautologie gevonden werd, gewoon warning geven
+            // als geen specifieke tautologie gevonden werd, gewoon warning geven (Zero Trust)
             if (!tautologyFound) {
                 if (role == ROLE_CLIENT) {
-                    addFinding(SEV_HIGH_RISK, "OR operator in WHERE clause. Potential boolean-based SQLi.");
+                    addFinding(SEV_CRITICAL_HARD_BLOCK, "OR operator strictly forbidden for Client.");
                 } else if (role == ROLE_EMPLOYEE) {
-                    addFinding(SEV_MEDIUM_PRIVILEGE, "OR operator in WHERE clause (Employee). Monitor for SQLi.");
+                    addFinding(SEV_MEDIUM_PRIVILEGE, "OR operator usage monitoring.");
                 } else {
-                    addFinding(SEV_LOW_SUSPICIOUS, "OR operator in WHERE clause (Admin).");
+                    addFinding(SEV_LOW_SUSPICIOUS, "Admin OR usage logged.");
+                }
+            }
+        }
+
+        // tautologie detectie: AND gevolgd door tautologie patronen
+        if (type == "T_AND" && ctx == SqlContext::WHERE) {
+            
+            int offset = 1;
+            while (i + offset < tokens.size() && tokens[i + offset].type == "T_LPAREN") {
+                offset++;
+            }
+
+            if (i + offset + 2 < tokens.size()) {
+                Token t1 = tokens[i + offset];     // Links
+                Token op = tokens[i + offset + 1]; // Operator
+                Token t3 = tokens[i + offset + 2]; // Rechts
+
+                bool isComparison = (op.type == "T_EQ" || op.type == "T_LT" || op.type == "T_GT" ||
+                                     op.type == "T_LTE" || op.type == "T_GTE" || op.type == "T_NEQ");
+
+                if (isComparison) {
+                    // Check: Literal vs Literal (bijv: AND 1=1, AND 'a'='a', AND 7340=7340)
+                    // Dit is nutteloze logica in een WHERE clause en duidt op Blind SQLi.
+                    
+                    bool t1IsLit = (t1.type == "T_INT" || t1.type == "T_STRING" || t1.type == "T_FLOAT" || t1.type == "T_HEX");
+                    bool t3IsLit = (t3.type == "T_INT" || t3.type == "T_STRING" || t3.type == "T_FLOAT" || t3.type == "T_HEX");
+
+                    if (t1IsLit && t3IsLit) {
+                        addFinding(SEV_CRITICAL_HARD_BLOCK, 
+                            "Blind SQL Injection Pattern: Literal comparison in AND clause (" + t1.value + op.value + t3.value + ").");
+                    }
+
+                    bool leftHasIdentifier = (t1.type == "T_ID");
+                    bool rightHasIdentifier = (t3.type == "T_ID");
+
+                    if (!leftHasIdentifier && !rightHasIdentifier) {
+                        addFinding(SEV_CRITICAL_HARD_BLOCK, 
+                            "Logic Evasion Detected: Comparison between constants/subqueries without column reference.");
+                    }
                 }
             }
         }
@@ -226,18 +318,56 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRo
             }
         }
 
+        
+        // A. Voorkom SELECT op gevoelige tabellen zonder filters (Client/Employee)
+        if (type == "T_FROM" && role != ROLE_ADMIN) {
+            for (size_t offset = 1; i + offset < tokens.size(); offset++) {
+                string val = tokens[i+offset].value;
+                transform(val.begin(), val.end(), val.begin(), ::toupper);
+                
+                // Als we een komma of een andere clause tegenkomen, stoppen we met zoeken naar tabelnamen
+                if (tokens[i+offset].type == "T_WHERE" || tokens[i+offset].type == "T_PCOMMA") break;
+
+                // Check of de tabelnaam (of een deel ervan na een punt) gevoelig is
+                if (val == "USERS" || val == "PASSWORDS" || val == "SENSITIVE_DATA") {
+                    bool hasWhere = false;
+                    for (size_t j = i; j < tokens.size(); ++j) {
+                        if (tokens[j].type == "T_WHERE") { hasWhere = true; break; }
+                    }
+                    if (!hasWhere) {
+                        addFinding(SEV_HIGH_RISK, "Unfiltered access to sensitive table (" + val + ") denied.");
+                    }
+                }
+            }
+        }
+
+       
         // System variables / fingerprinting
         if (type == "T_ID") {
-            std::string upperVal = value;
+            // A. Detecteer 'Non-ASCII' (Homoglyph protection)
+            // Voorkomt dat UЅERS (met Cyrillische S) wordt gebruikt om filters te omzeilen.
+            for (char c : value) {
+                if (static_cast<unsigned char>(c) > 127) {
+                    addFinding(SEV_CRITICAL_HARD_BLOCK, "Homoglyph attack detected: Non-ASCII character in identifier '" + value + "'.");
+                    break;
+                }
+            }
+
+            // B. System variables / fingerprinting
+            // Controleert op @@variables en gevoelige systeemfuncties
+            string upperVal = value;
             transform(upperVal.begin(), upperVal.end(), upperVal.begin(), ::toupper);
+            
             if (value.size() >= 2 && value.substr(0,2) == "@@") {
                 addFinding(SEV_HIGH_RISK, "System variable access (" + value + ").");
             }
+            
             if (upperVal == "VERSION" || upperVal == "DATABASE" || upperVal == "USER" ||
                 upperVal == "CURRENT_USER" || upperVal == "SESSION_USER") {
                 addFinding(SEV_HIGH_RISK, "System information function (" + upperVal + "()).");
             }
         }
+
 
         // WITH RECURSIVE (Common Table Expressions)
         if (type == "T_WITH") {
@@ -248,7 +378,7 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRo
                     break;
                 }
             }
-
+            
             if (isRecursive) {
                 if (role != ROLE_ADMIN) {
                     addFinding(SEV_CRITICAL_HARD_BLOCK, "RECURSIVE CTE detected. Potential DOS risk or complex query bypass.");
@@ -270,13 +400,35 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRo
     }
 
     // 6. Comment truncation attacks
-    if ((query.find("'--") != std::string::npos || query.find("'/*") != std::string::npos) && role != ROLE_ADMIN) {
-        addFinding(SEV_HIGH_RISK, "String terminated before comment. Possible truncation attack.");
+    bool insideQuote = false;
+    for (size_t k = 0; k < query.length(); k++) {
+        if (query[k] == '\'') {
+            insideQuote = !insideQuote;
+            
+            // We hebben net een quote gesloten (insideQuote is nu false)
+            // Kijk nu vooruit wat er volgt.
+            if (!insideQuote) {
+                size_t next = k + 1;
+                // Skip witruimte
+                while (next < query.length() && isspace(query[next])) next++;
+                
+                // Check of we nu een commentaar start zien (-- of /*)
+                if (next + 1 < query.length()) {
+                    bool isDashComment = (query[next] == '-' && query[next+1] == '-');
+                    bool isBlockComment = (query[next] == '/' && query[next+1] == '*');
+                    
+                    if (isDashComment || isBlockComment) {
+                        if (role != ROLE_ADMIN) {
+                            addFinding(SEV_HIGH_RISK, "String terminated followed by comment. Truncation attack detected.");
+                        }
+                    }
+                }
+            }
+        }
     }
-
     // 7. Risk scoring
-    if (this->findings.empty()) {
-        std::cout << "    [Security Scan] No obvious signatures found." << std::endl;
+    if (this->findings.empty()) { 
+        cout << "    [Security Scan] No obvious signatures found." << endl;
         return false;
     }
 
@@ -290,18 +442,18 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRo
         }
         return 0;
     };
-    for (auto& f : this->findings) riskScore += score(f.severity);
+    for (auto& f : this->findings) riskScore += score(f.severity); 
 
     // Alert display
-    sort(this->findings.begin(), this->findings.end(), [](auto& a, auto& b){ return a.severity < b.severity; });
-    for (auto& f : this->findings) {
-        if (f.severity <= SEV_HIGH_RISK) {
-            std::cout << "  --> \033[1;31m[ALERT]\033[0m " << f.message << std::endl;
+    sort(this->findings.begin(), this->findings.end(), [](auto& a, auto& b){ return a.severity < b.severity; }); 
+    for (auto& f : this->findings) { 
+        if (f.severity >= SEV_HIGH_RISK) {
+            cout << "  --> \033[1;31m[ALERT]\033[0m " << f.message << endl;
         }
     }
 
     bool hasCriticalBlock = false;
-    for (auto& f : this->findings) {
+    for (auto& f : this->findings) { 
         if (f.severity == SEV_CRITICAL_HARD_BLOCK) {
             hasCriticalBlock = true;
             break;

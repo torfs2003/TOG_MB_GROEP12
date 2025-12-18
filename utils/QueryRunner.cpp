@@ -1,124 +1,105 @@
 #include "QueryRunner.h"
 
-#include <iostream>
-#include <filesystem>
 #include "../LALR.h"
 #include "../auth/RBACManager.h"
 #include "../parser/LALRParser.h"
 #include "../lexer/Lexer.h"
 #include "../security/SecurityAnalyzer.h"
 
-// Maakt gebruik van FNV-1a hash functie (Fowler–Noll–Vo)
-uint64_t hashFile(const std::string& fileName) {
-    std::ifstream file(fileName, std::ios::in | std::ios::binary);
-    if(!file) {
-        std::cout << "[System] Error opening file";
-        return 0;
-    }
+string setupPathsAndGenerate() {
+    
+    // CMakeLists.txt
+    string root = PROJECT_ROOT;
+    
+    // Definieer de grammatica en parsetable bestanden
+    fs::path grammarPath = fs::path(root) / "CFG.json";
+    fs::path tablePath = fs::path(root) / "parsetable.json";
 
-    constexpr uint64_t FNV_OFFSET_BASIS = 14695981039346656037;
-    constexpr uint64_t FNV_PRIME = 1099511628211;
+    std::cout << "[System] Looking for grammar at: " << grammarPath << std::endl;
 
-    uint64_t hash = FNV_OFFSET_BASIS;
-    char buffer[4096];
+    // Zorg ervoor dat de parse tabel gegenereerd en up-to-date is
+    ensureParseTable(grammarPath.string(), tablePath.string());
 
-    while(file.read(buffer, sizeof(buffer)) || file.gcount() > 0) {
-        for(std::streamsize i = 0; i < file.gcount(); i++) {
-            hash ^= static_cast<unsigned char>(buffer[i]); // XOR hash met gelezen byte
-            hash *= FNV_PRIME;
-        }
-    }
-
-    return hash;
+    return tablePath.string();
 }
 
-void ensureParseTable(const std::string& grammarFile, const std::string& tableFile) {
+void ensureParseTable(const string& grammarFile, const string& tableFile) {
     bool needToGenerate = true;
-    std::string hashFilename = grammarFile + ".hash";
 
-    // Check op basis van de hash van de grammar om te zien of we opnieuw moeten genereren
-    if (fs::exists(tableFile) && fs::exists(grammarFile) && fs::exists(hashFilename)) {
-        // Lees de gesavede hash
-        std::ifstream hf(hashFilename);
-        uint64_t storedHash;
-        hf >> storedHash;
+    // Check op basis van timestamps om te zien of we opnieuw moeten genereren
+    if (fs::exists(tableFile) && fs::exists(grammarFile)) {
+        auto grammarTime = fs::last_write_time(grammarFile);
+        auto tableTime = fs::last_write_time(tableFile);
 
-        uint64_t currentHash = hashFile(grammarFile);
-
-        // Vergelijk met de hash van de huidige grammar
-        if(currentHash == storedHash) {
-            std::cout << "[System] Parse table is up to date. Skipping generation.\n";
+        if (tableTime >= grammarTime) {
+            cout << "[System] Parse table is up to date. Skipping generation.\n";
             needToGenerate = false;
         } else {
-            std::cout << "[System] Grammar file has changed. Regenerating parse table...\n";
+            cout << "[System] Grammar file has changed. Regenerating parse table...\n";
         }
     } else {
-        std::cout << "[System] Parse table not found. Generating...\n";
+        cout << "[System] Parse table not found. Generating...\n";
     }
 
     if (needToGenerate) {
         CFG cfg(grammarFile);
         cfg.toStates();      
         cfg.saveTableToJSON(tableFile);
-
-        // Save de nieuwe hash
-        std::ofstream hf(hashFilename);
-        hf << hashFile(grammarFile);
     }
 }
 
-void runCheck(const std::string& tableFile, const std::vector<std::string>& queries, UserRole role) {
+void runCheck(const string& tableFile, const vector<string>& queries, UserRole role) {
     SimpleLexer lexer;
     LALRParser parser(tableFile);
     SecurityAnalyzer security;
     RBACManager rbac;
 
-    std::cout << "\n=======================================================" << std::endl;
-    std::cout << "  USER ROLE: \033[1;36m" << rbac.getRoleName(role) << "\033[0m" << std::endl;
-    std::cout << "=======================================================" << std::endl;
+    cout << "\n=======================================================" << endl;
+    cout << "  USER ROLE: \033[1;36m" << rbac.getRoleName(role) << "\033[0m" << endl;
+    cout << "=======================================================" << endl;
 
     int count = 1;
-    for (const std::string& q : queries) {
-        std::cout << "\nQUERY " << count++ << ": " << q << std::endl;
+    for (const string& q : queries) {
+        cout << "\nQUERY " << count++ << ": " << q << endl;
         
-        std::vector<Token> tokens = lexer.tokenize(q);
+        vector<Token> tokens = lexer.tokenize(q);
 
         // 1. Security Check (Firewall)
         if (security.isDangerous(lexer, q, role)) {
-            std::cout << ">>> ACTION: \033[1;31mBLOCKED BY FIREWALL (Security Violation)\033[0m" << std::endl;
-            std::cout << "-------------------------------------------------------" << std::endl;
+            cout << ">>> ACTION: \033[1;31mBLOCKED BY FIREWALL (Security Violation)\033[0m" << endl;
+            cout << "-------------------------------------------------------" << endl;
             continue; 
         } 
 
         // 2. RBAC Check (Mag deze rol dit commando uitvoeren?
         if (!rbac.hasPermission(role, tokens)) {
-            std::cout << ">>> ACTION: \033[1;31mDENIED (INSUFFICIENT PRIVILEGES)\033[0m" << std::endl;
+            cout << ">>> ACTION: \033[1;31mDENIED (INSUFFICIENT PRIVILEGES)\033[0m" << endl;
             continue; 
         }
 
         // 3. Syntax Check (Is het een valide query?)
         bool validSyntax = parser.parse(tokens); 
 
-        std::cout << "\n>>> FINAL REPORT:" << std::endl;
+        cout << "\n>>> FINAL REPORT:" << endl;
 
         if (validSyntax) {
             // Dit is het pad van volledig succes (Security + RBAC + Syntax)
-            std::cout << ">>> ACTION: \033[1;32mALLOWED (Proceeding to Execution)\033[0m" << std::endl; 
-            std::cout << "  Access:           GRANTED" << std::endl;
-            std::cout << "  Security Status: CLEAN" << std::endl;
-            std::cout << "  Syntax Status:  VALID SQL" << std::endl;
+            cout << ">>> ACTION: \033[1;32mALLOWED (Proceeding to Execution)\033[0m" << endl; 
+            cout << "  Access:           GRANTED" << endl;
+            cout << "  Security Status: CLEAN" << endl;
+            cout << "  Syntax Status:  VALID SQL" << endl;
         } else { 
             bool hadAlerts = !security.getLastFindings().empty(); 
 
-            std::cout << ">>> ACTION: \033[1;31mBLOCKED (SYNTAX ERROR)\033[0m" << std::endl; 
-            std::cout << "  Access:           BLOCKED" << std::endl;
+            cout << ">>> ACTION: \033[1;31mBLOCKED (SYNTAX ERROR)\033[0m" << endl; 
+            cout << "  Access:           BLOCKED" << endl;
             
             if (hadAlerts) {
-                std::cout << "  Security Status: VIOLATION DETECTED" << std::endl; 
+                cout << "  Security Status: VIOLATION DETECTED" << endl; 
             } else { 
-                std::cout << "  Security Status: CLEAN" << std::endl; 
+                cout << "  Security Status: CLEAN" << endl; 
             }
-            std::cout << "  Syntax Status:  \033[1;31mINVALID SQL\033[0m" << std::endl;
+            cout << "  Syntax Status:  \033[1;31mINVALID SQL\033[0m" << endl;
         }
     }
 }

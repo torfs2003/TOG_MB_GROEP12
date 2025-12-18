@@ -2,13 +2,28 @@
 #include "utils/QueryRunner.h"
 
 int main() {
-    // Definieer de grammatica en parsetable bestanden
-    const string grammarFile = "CFG.json";
-    const string tableFile = "parsetable.json";
+
+    string tableFile = setupPathsAndGenerate();
     
-    // Zorg ervoor dat de parse tabel gegenereerd en up-to-date is
-    ensureParseTable(grammarFile, tableFile);
     vector<string> queries = {
+        // --- 1. Comment-Injection Varianten ---
+        R"(SELECT /*!50000col1*/, col2 FROM users;)",                                 // MySQL Version-Specific
+        R"(SEL/**/ECT * FR/**/OM users WHE/**/RE 1=1;)",                               // Inline Fragmentation
+        R"(SELECT)" "\n" R"(*)" "\n" R"(FROM)" "\n" R"(users;)",                        // Newline Obfuscatie (vervanging voor %0A)
+
+        // --- 2. Encoding & Karakter-trucs ---
+        R"(?id=1%252f%252a*/UNION%252f%252a /SELECT)",                                // Double URL Encoding
+        R"(SELECT * FROM users WHERE name = 'admіn' OR 1=1;)",                         // Unicode Homoglyphs (Cyrillische 'і')
+        "admin" + string("\0", 1) + "' OR 1=1--",                                     // Null-Byte Termination
+
+        // --- 3. Logische & Wiskundige Evasie ---
+        R"(SELECT * FROM users WHERE id = 1 AND ASCII(LOWER(SUBSTRING((SELECT @@version),1,1)))=65;)", 
+        R"(SELECT * FROM users WHERE id = 1 AND (SELECT 2211)>(SELECT 1234);)",
+        R"(SELECT * FROM users WHERE name = 0x61646D696E;)",                          // Hex Identifier (admin)
+
+        // --- 4. Blind SQLi "Time-Based" Payloads ---
+        R"(SELECT * FROM users WHERE id = 1 AND (SELECT 1 FROM (SELECT(SLEEP(5)))a);)",
+        R"(SELECT * FROM users WHERE id = 1 AND (SELECT 1 FROM (SELECT(BENCHMARK(5000000,MD5('A'))))b);)"
         // =========================================================
         // GROUP 7: THE TAUTOLOGY TRAPS (Code 1 vs Code 2 Showdown)
         // =========================================================

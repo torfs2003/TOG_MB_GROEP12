@@ -1,7 +1,5 @@
 #ifndef SECURITYTYPES_H
 #define SECURITYTYPES_H
-#include <string>
-#include <unordered_set>
 
 // DDL - ALLEEN ADMIN
 inline const std::unordered_set<std::string> DDL_KEYWORDS = {

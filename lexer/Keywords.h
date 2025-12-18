@@ -1,9 +1,6 @@
 #ifndef KEYWORDS_H
 #define KEYWORDS_H
 
-#include <string>
-#include <unordered_map>
-
 inline const std::unordered_map<std::string, std::string> SQL_KEYWORDS = {
     {"ADD", "T_ADD"}, {"ALL", "T_ALL"}, {"ALTER", "T_ALTER"},
     {"AND", "T_AND"}, {"ANY", "T_ANY"}, {"AS", "T_AS"},
@@ -45,6 +42,7 @@ inline const std::unordered_map<std::string, std::string> SQL_KEYWORDS = {
     {"LIMIT", "T_LIMIT"}, {"OFFSET", "T_OFFSET"}, {"TRUNCATE", "T_TRUNCATE"},
     {"TRUE", "T_BOOLEAN"}, {"UNION", "T_UNION"}, {"UNIQUE", "T_UNIQUE"},
     {"UPDATE", "T_UPDATE"}, {"USING", "T_USING"}, {"VALUES", "T_VALUES"},
+    {"VALUE", "T_VALUE"}, {"USER", "T_USER"}, {"NAME", "T_NAME"}, {"DATABASE", "T_DATABASE"},
     {"VARCHAR", "T_VARCHAR"}, {"VIEW", "T_VIEW"}, {"WHEN", "T_WHEN"},
     {"WHERE", "T_WHERE"}, {"WITH", "T_WITH"}, {"XML", "T_XML"},
     {"YEAR", "T_YEAR"}, {"AUTOINCREMENT", "T_AUTOINCREMENT"},

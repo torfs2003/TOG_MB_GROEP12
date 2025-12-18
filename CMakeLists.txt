@@ -25,9 +25,8 @@ add_executable(SQLGuard
         utils/QueryRunner.h
 )
 
-add_custom_target(copy_query_file ALL
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_SOURCE_DIR}/CFG.json ${CMAKE_BINARY_DIR}/CFG.json
-)
+target_include_directories(SQLGuard PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_dependencies(SQLGuard copy_query_file)
+target_compile_definitions(SQLGuard PRIVATE 
+    PROJECT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}"
+)

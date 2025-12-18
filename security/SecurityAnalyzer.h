@@ -1,7 +1,7 @@
 #ifndef SECURITYANALYZER_H
 #define SECURITYANALYZER_H
 
-#include <vector>
+#include "common.h"
 #include "SecurityTypes.h"
 #include "../lexer/Lexer.h"
 #include "../auth/UserRole.h"
