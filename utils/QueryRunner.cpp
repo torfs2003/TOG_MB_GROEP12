@@ -8,15 +8,45 @@
 #include "../lexer/Lexer.h"
 #include "../security/SecurityAnalyzer.h"
 
+// Maakt gebruik van FNV-1a hash functie (Fowler–Noll–Vo)
+uint64_t hashFile(const std::string& fileName) {
+    std::ifstream file(fileName, std::ios::in | std::ios::binary);
+    if(!file) {
+        std::cout << "[System] Error opening file";
+        return 0;
+    }
+
+    constexpr uint64_t FNV_OFFSET_BASIS = 14695981039346656037;
+    constexpr uint64_t FNV_PRIME = 1099511628211;
+
+    uint64_t hash = FNV_OFFSET_BASIS;
+    char buffer[4096];
+
+    while(file.read(buffer, sizeof(buffer)) || file.gcount() > 0) {
+        for(std::streamsize i = 0; i < file.gcount(); i++) {
+            hash ^= static_cast<unsigned char>(buffer[i]); // XOR hash met gelezen byte
+            hash *= FNV_PRIME;
+        }
+    }
+
+    return hash;
+}
+
 void ensureParseTable(const std::string& grammarFile, const std::string& tableFile) {
     bool needToGenerate = true;
+    std::string hashFilename = grammarFile + ".hash";
 
-    // Check op basis van timestamps om te zien of we opnieuw moeten genereren
-    if (fs::exists(tableFile) && fs::exists(grammarFile)) {
-        auto grammarTime = fs::last_write_time(grammarFile);
-        auto tableTime = fs::last_write_time(tableFile);
+    // Check op basis van de hash van de grammar om te zien of we opnieuw moeten genereren
+    if (fs::exists(tableFile) && fs::exists(grammarFile) && fs::exists(hashFilename)) {
+        // Lees de gesavede hash
+        std::ifstream hf(hashFilename);
+        uint64_t storedHash;
+        hf >> storedHash;
 
-        if (tableTime > grammarTime) {
+        uint64_t currentHash = hashFile(grammarFile);
+
+        // Vergelijk met de hash van de huidige grammar
+        if(currentHash == storedHash) {
             std::cout << "[System] Parse table is up to date. Skipping generation.\n";
             needToGenerate = false;
         } else {
@@ -30,6 +60,10 @@ void ensureParseTable(const std::string& grammarFile, const std::string& tableFi
         CFG cfg(grammarFile);
         cfg.toStates();      
         cfg.saveTableToJSON(tableFile);
+
+        // Save de nieuwe hash
+        std::ofstream hf(hashFilename);
+        hf << hashFile(grammarFile);
     }
 }
 
