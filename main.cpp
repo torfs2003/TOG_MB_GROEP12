@@ -1,5 +1,5 @@
-#include "validator.h"
 #include "common.h"
+#include "utils/QueryRunner.h"
 
 int main() {
     // Definieer de grammatica en parsetable bestanden
