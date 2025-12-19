@@ -39,8 +39,9 @@ LALRParser::LALRParser(std::string filename) {
     }
 }
 
-bool LALRParser::parse(std::vector<Token>& tokens) {
+ASTNode* LALRParser::parse(const std::vector<Token>& tokens) {
     std::stack<int> stateStack;
+    std::stack<ASTNode*> valueStack;
     stateStack.push(0);
 
     int tokenIdx = 0;
@@ -59,7 +60,7 @@ bool LALRParser::parse(std::vector<Token>& tokens) {
         if (actionTable[currentState].find(sym) == actionTable[currentState].end()) {
 
             if (currentState == 0 && (sym == "T_EOF" || sym == "$")) {
-                return !globalError;
+                return globalError ? nullptr : (valueStack.empty() ? nullptr : valueStack.top());
             }
             if (!recoveryMode) {
                 std::cout << "\n    --> [Syntax Error] Unexpected '" << currentToken.value
@@ -83,7 +84,7 @@ bool LALRParser::parse(std::vector<Token>& tokens) {
                 continue;
             }
             else if (sym == "T_EOF" || sym == "$") {
-                 return false;
+                 return nullptr;
             }
             else {
                 tokenIdx++;
@@ -95,35 +96,49 @@ bool LALRParser::parse(std::vector<Token>& tokens) {
 
         if (act.type == ParserAction::SHIFT) {
             stateStack.push(act.state);
+            valueStack.push(new ASTNode(currentToken));
             tokenIdx++;
-
-            // Bij een puntkomma is de query afgerond
-            if (sym == "T_PCOMMA") {
-
-                while(!stateStack.empty()) stateStack.pop();
-                stateStack.push(0);
-
-                recoveryMode = false;
-                currentQueryError = false;
-                queryCount++;
-
-            }
         }
         else if (act.type == ParserAction::REDUCE) {
+            std::vector<ASTNode*> children;
             for (int i = 0; i < act.rhsSize; i++) {
+                if(!valueStack.empty()) {
+                    children.push_back(valueStack.top());
+                    valueStack.pop();
+                }
                 if (!stateStack.empty()) stateStack.pop();
             }
+            std::reverse(children.begin(), children.end());
             if (stateStack.empty()) stateStack.push(0);
+
+            // filter tokens die niet belangrijk zijn voor de AST
+            std::vector<ASTNode*> filtered;
+            for (auto* child : children) {
+                if (!child) continue;
+                std::string t = child->type;
+                if (t == "T_COMMA" || t == "T_PCOMMA" || t == "T_LPAREN" ||
+                    t == "T_RPAREN" || t == "T_EOF") continue;
+                filtered.push_back(child);
+            }
+
+            if (filtered.empty() && act.lhs.substr(0, 4) == "opt_") {
+                // skip optionele nodes
+            } else if (filtered.size() == 1) {
+                valueStack.push(filtered[0]); // als er maar 1 child is vervang de node met die child
+            } else {
+                valueStack.push(new ASTNode(act.lhs, "", filtered));
+            }
 
             int topState = stateStack.top();
             if (gotoTable[topState].find(act.lhs) == gotoTable[topState].end()) {
-                return false;
+                return nullptr;
             }
             stateStack.push(gotoTable[topState][act.lhs]);
         }
         else if (act.type == ParserAction::ACCEPT) {
-            return !globalError;
+            if (globalError) return nullptr;
+            return valueStack.empty() ? nullptr : valueStack.top();
         }
     }
-    return !globalError;
+    return nullptr;
 }
