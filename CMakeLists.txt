@@ -23,6 +23,7 @@ add_executable(SQLGuard
         auth/RBACManager.h
         utils/QueryRunner.cpp
         utils/QueryRunner.h
+        core/AST.h
 )
 
 add_custom_target(copy_query_file ALL

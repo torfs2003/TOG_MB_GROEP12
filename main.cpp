@@ -25,39 +25,40 @@ int main() {
 
         // === 2. KRITISCHE BEVEILIGINGSVECTOREN (Moet BLOKKEREN) ===
 
-        // Q5a: Tautologie / Boolean-Based SQLi (Controle op OR in WHERE context)
+        // Q5: Tautologie / Boolean-Based SQLi (Controle op OR in WHERE context)
         "SELECT * FROM users WHERE user_id = 1 OR 1=1;",
 
-        // Q5b: String tautologie
+        // Q6: String tautologie
         "SELECT * FROM users WHERE username = 'admin' OR 'a'='a';",
         
-        // Q5c: Altijd-true (1<2)
+        // Q7: Altijd-true (1<2)
         "SELECT * FROM users WHERE id = 5 OR 1<2;",
         
-        // Q5d: OR TRUE
+        // Q8: OR TRUE
         "SELECT * FROM users WHERE active = 0 OR TRUE;",
         
-        // Q5e: OR niet-nul nummer
+        // Q9: OR niet-nul nummer
         "SELECT * FROM users WHERE id = 999 OR 1;",
         
-        // Q5f: Zelfde identifier
+        // Q10: Zelfde identifier
         "SELECT * FROM users WHERE password = 'test' OR id=id;",
         
-        // Q5g: Groter dan (2>1)
+        // Q11: Groter dan (2>1)
         "SELECT * FROM accounts WHERE balance < 100 OR 2>1;",
         
-        // Q5h: Niet gelijk aan (1!=2)
+        // Q12: Niet gelijk aan (1!=2)
         "SELECT * FROM users WHERE role = 'guest' OR 1!=2;",
 
-        // Q6: Stacked Query (Moet hard blokkeren bij dubbele ;)
+        // Q13: Stacked Query (Moet hard blokkeren bij dubbele ;)
         "SELECT id FROM users; DELETE FROM accounts WHERE balance = 0;",
         
-        // Q7: Time-Based Blind SQLi (Controleert op T_SLEEP keyword, harde blokkade)
+        // Q14: Time-Based Blind SQLi (Controleert op T_SLEEP keyword, harde blokkade)
         "SELECT id FROM users WHERE EXISTS (SELECT 1 FROM accounts WHERE user_id=users.id AND balance > IF(1=1, SLEEP(3), 0));",
 
-        // Q8: DDL Attempt (Test RBAC/DDL keyword detectie voor niet-Admin)
+        // Q15: DDL Attempt (Test RBAC/DDL keyword detectie voor niet-Admin)
         "ALTER TABLE users ADD COLUMN temp_id INT;",
 
+        // Q16
         "SELECT id INTO 0x4D795461626C65 FROM accounts;",
     };
 

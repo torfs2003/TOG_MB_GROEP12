@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include "../core/Token.h"
+#include "../core/AST.h"
 
 struct ParserAction {
     enum Type { SHIFT, REDUCE, ACCEPT, ERROR } type;
@@ -18,7 +19,7 @@ class LALRParser {
     std::unordered_map<int, std::unordered_map<std::string, int>> gotoTable;
 public:
     LALRParser(std::string filename);
-    bool parse(std::vector<Token>& tokens);
+    ASTNode* parse(const std::vector<Token>& tokens);
 };
 
 

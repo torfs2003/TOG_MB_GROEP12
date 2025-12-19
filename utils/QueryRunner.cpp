@@ -83,32 +83,34 @@ void runCheck(const std::string& tableFile, const std::vector<std::string>& quer
         
         std::vector<Token> tokens = lexer.tokenize(q);
 
+        ASTNode* ast = parser.parse(tokens);
+        bool validSyntax = (ast != nullptr);
+
         // 1. Security Check (Firewall)
         if (security.isDangerous(lexer, q, role)) {
             std::cout << ">>> ACTION: \033[1;31mBLOCKED BY FIREWALL (Security Violation)\033[0m" << std::endl;
             std::cout << "-------------------------------------------------------" << std::endl;
             continue; 
-        } 
+        }
 
         // 2. RBAC Check (Mag deze rol dit commando uitvoeren?
         if (!rbac.hasPermission(role, tokens)) {
             std::cout << ">>> ACTION: \033[1;31mDENIED (INSUFFICIENT PRIVILEGES)\033[0m" << std::endl;
-            continue; 
         }
 
         // 3. Syntax Check (Is het een valide query?)
-        bool validSyntax = parser.parse(tokens); 
-
         std::cout << "\n>>> FINAL REPORT:" << std::endl;
-
         if (validSyntax) {
             // Dit is het pad van volledig succes (Security + RBAC + Syntax)
-            std::cout << ">>> ACTION: \033[1;32mALLOWED (Proceeding to Execution)\033[0m" << std::endl; 
+            std::cout << ">>> ACTION: \033[1;32mALLOWED (Proceeding to Execution)\033[0m" << std::endl;
             std::cout << "  Access:           GRANTED" << std::endl;
             std::cout << "  Security Status: CLEAN" << std::endl;
             std::cout << "  Syntax Status:  VALID SQL" << std::endl;
-        } else { 
-            bool hadAlerts = !security.getLastFindings().empty(); 
+
+            std::cout << "\n>>> AST: \n";
+            ast->print(2);
+        } else {
+            bool hadAlerts = !security.getLastFindings().empty();
 
             std::cout << ">>> ACTION: \033[1;31mBLOCKED (SYNTAX ERROR)\033[0m" << std::endl; 
             std::cout << "  Access:           BLOCKED" << std::endl;
