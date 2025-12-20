@@ -7,6 +7,7 @@
 #include "../parser/LALRParser.h"
 #include "../lexer/Lexer.h"
 #include "../security/SecurityAnalyzer.h"
+#include "../security/TaintAnalyzer.h"
 
 // Maakt gebruik van FNV-1a hash functie (Fowler–Noll–Vo)
 uint64_t hashFile(const std::string& fileName) {
@@ -86,6 +87,25 @@ void runCheck(const std::string& tableFile, const std::vector<std::string>& quer
         ASTNode* ast = parser.parse(tokens);
         bool validSyntax = (ast != nullptr);
 
+        TaintAnalyzer taintAnalyzer;
+        if (validSyntax && ast) {
+            taintAnalyzer.analyze(ast);
+
+            bool hasCriticalTaint = false;
+            for (const auto& finding : taintAnalyzer.getFindings()) {
+                if (finding.severity == SEV_CRITICAL_HARD_BLOCK) {
+                    hasCriticalTaint = true;
+                    break;
+                }
+            }
+
+            if (hasCriticalTaint) {
+                std::cout << ">>> ACTION: \033[1;31mBLOCKED BY TAINT ANALYSIS (Critical Taint Flow)\033[0m" << std::endl;
+                std::cout << "-------------------------------------------------------" << std::endl;
+                continue;
+            }
+        }
+
         // 1. Security Check (Firewall)
         if (security.isDangerous(lexer, q, role)) {
             std::cout << ">>> ACTION: \033[1;31mBLOCKED BY FIREWALL (Security Violation)\033[0m" << std::endl;
@@ -105,6 +125,13 @@ void runCheck(const std::string& tableFile, const std::vector<std::string>& quer
             std::cout << ">>> ACTION: \033[1;32mALLOWED (Proceeding to Execution)\033[0m" << std::endl;
             std::cout << "  Access:           GRANTED" << std::endl;
             std::cout << "  Security Status: CLEAN" << std::endl;
+
+            if (!taintAnalyzer.getFindings().empty()) {
+                std::cout << "  Taint Status:    WARNINGS DETECTED" << std::endl;
+            } else {
+                std::cout << "  Taint Status:   CLEAN" << std::endl;
+            }
+            
             std::cout << "  Syntax Status:  VALID SQL" << std::endl;
 
             std::cout << "\n>>> AST: \n";

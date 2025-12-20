@@ -50,7 +50,7 @@ inline const std::unordered_map<std::string, std::string> SQL_KEYWORDS = {
     {"YEAR", "T_YEAR"}, {"AUTOINCREMENT", "T_AUTOINCREMENT"},
     {"CURRENT_TIMESTAMP", "T_DEFAULT"}, {"CURRENT", "T_CURRENT"},
     {"FOLLOWING", "T_FOLLOWING"}, {"PRECEDING", "T_PRECEDING"},
-    {"OUTER", "T_OUTER"}, {"IF", "T_IF"}
+    {"OUTER", "T_OUTER"}, {"IF", "T_IF"}, {"?", "T_PLACEHOLDER"}
 };
 
 inline const std::unordered_map<char, std::string> SQL_SYMBOLS = {
