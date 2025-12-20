@@ -60,6 +60,38 @@ int main() {
 
         // Q16
         "SELECT id INTO 0x4D795461626C65 FROM accounts;",
+
+        // === 3. TAINT ANALYZER ===
+
+        // Q17
+        "SELECT * FROM users WHERE id = ?;",
+
+        // Q18
+        "INSERT INTO users (username, email) VALUES (?, ?);",
+
+        // Q19
+        "UPDATE users SET email = ? WHERE id = ?;",
+
+        // Q20
+        "SELECT * FROM users u JOIN accounts a ON u.id = ?;",
+
+        // Q21
+        "SELECT * FROM users ORDER BY ?;",
+
+        // Q22
+        "SELECT COUNT(*) FROM users GROUP BY role HAVING COUNT(*) > ?;",
+
+        // Q23
+        "SELECT * FROM users WHERE id = SLEEP(?);",
+
+        // Q24
+        "SELECT username FROM users WHERE id = ? UNION SELECT email FROM admins;",
+
+        // Q25
+        "SELECT * FROM users WHERE id = ? OR username = 'admin';",
+
+        // Q26
+        "SELECT * FROM users WHERE id = 1;",
     };
 
     cout << "\n=== STARTING FINAL SECURITY & ACCESS CONTROL TESTS ===\n";
