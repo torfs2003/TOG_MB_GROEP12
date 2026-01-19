@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <filesystem>
+#include <ranges>
+
 #include "../LALR.h"
 #include "../auth/RBACManager.h"
 #include "../parser/LALRParser.h"
@@ -149,5 +151,16 @@ void runCheck(const std::string& tableFile, const std::vector<std::string>& quer
             }
             std::cout << "  Syntax Status:  \033[1;31mINVALID SQL\033[0m" << std::endl;
         }
+    }
+}
+
+void createQueryVector(std::vector<std::string> &queries, const std::string &queryFile) {
+    std::string filename = "../" + queryFile;
+    std::ifstream in(filename);
+    json j;
+    in >> j;
+    const auto& q = j.at("Query");
+    for (const auto& it : q) {
+        queries.push_back(it.get<std::string>());
     }
 }

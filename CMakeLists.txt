@@ -26,6 +26,8 @@ add_executable(SQLGuard
         utils/QueryRunner.cpp
         utils/QueryRunner.h
         core/AST.h
+        auth/User.cpp
+        auth/User.h
 )
 
 add_custom_target(copy_query_file ALL

@@ -1,108 +1,42 @@
 #include "common.h"
 #include "utils/QueryRunner.h"
+#include "auth/User.h"
 
 int main() {
     // Definieer de grammatica en parsetable bestanden
     const string grammarFile = "CFG.json";
     const string tableFile = "parsetable.json";
-    
+    const string queryFile = "query.json";
+    const string userFile = "user.json";
+    std::vector<string> queries = {};
+    UserStore users = {};
+    createUsers(users, userFile);
+    // Leest de queries in die in de file staan.
+    createQueryVector(queries, queryFile);
     // Zorg ervoor dat de parse tabel gegenereerd en up-to-date is
     ensureParseTable(grammarFile, tableFile);
-    vector<string> queries = {
-        // === 1. BASIS FUNCTIONALITEIT & COMPLEXE LOGICA (Moet Parsen) ===
+    // het inloggen van de user
+    User* currentUser = nullptr;
+    bool loggedIn = false;
+    while (!loggedIn) {
+        std::cout << "Enter user name: ";
+        std::string userName;
+        std::cin >> userName;
 
-        // Q1: SAFE SELECT met complexe CASE WHEN (Controle op basis-parsing)
-        "SELECT id, CASE WHEN LENGTH(username) > 5 THEN 'LONG' ELSE 'SHORT' END AS name_type FROM users;",
+        std::cout << "Enter password: ";
+        std::string password;
+        std::cin >> password;
 
-        // Q2: Geneste Scalar Subquery (Correlatie & Complexiteit)
-        "SELECT id, (SELECT MAX(balance) FROM accounts WHERE accounts.user_id = users.id) AS max_balance FROM users;",
-        
-        // Q3: UNION Exfiltratie (Controle op UNION token detectie)
-        "SELECT username FROM users UNION SELECT email FROM admins;",
-
-        // Q4: System Enumeration (Controle op System Schema & Function calls)
-        "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE();",
-
-        // === 2. KRITISCHE BEVEILIGINGSVECTOREN (Moet BLOKKEREN) ===
-
-        // Q5: Tautologie / Boolean-Based SQLi (Controle op OR in WHERE context)
-        "SELECT * FROM users WHERE user_id = 1 OR 1=1;",
-
-        // Q6: String tautologie
-        "SELECT * FROM users WHERE username = 'admin' OR 'a'='a';",
-        
-        // Q7: Altijd-true (1<2)
-        "SELECT * FROM users WHERE id = 5 OR 1<2;",
-        
-        // Q8: OR TRUE
-        "SELECT * FROM users WHERE active = 0 OR TRUE;",
-        
-        // Q9: OR niet-nul nummer
-        "SELECT * FROM users WHERE id = 999 OR 1;",
-        
-        // Q10: Zelfde identifier
-        "SELECT * FROM users WHERE password = 'test' OR id=id;",
-        
-        // Q11: Groter dan (2>1)
-        "SELECT * FROM accounts WHERE balance < 100 OR 2>1;",
-        
-        // Q12: Niet gelijk aan (1!=2)
-        "SELECT * FROM users WHERE role = 'guest' OR 1!=2;",
-
-        // Q13: Stacked Query (Moet hard blokkeren bij dubbele ;)
-        "SELECT id FROM users; DELETE FROM accounts WHERE balance = 0;",
-        
-        // Q14: Time-Based Blind SQLi (Controleert op T_SLEEP keyword, harde blokkade)
-        "SELECT id FROM users WHERE EXISTS (SELECT 1 FROM accounts WHERE user_id=users.id AND balance > IF(1=1, SLEEP(3), 0));",
-
-        // Q15: DDL Attempt (Test RBAC/DDL keyword detectie voor niet-Admin)
-        "ALTER TABLE users ADD COLUMN temp_id INT;",
-
-        // Q16
-        "SELECT id INTO 0x4D795461626C65 FROM accounts;",
-
-        // === 3. TAINT ANALYZER ===
-
-        // Q17
-        "SELECT * FROM users WHERE id = ?;",
-
-        // Q18
-        "INSERT INTO users (username, email) VALUES (?, ?);",
-
-        // Q19
-        "UPDATE users SET email = ? WHERE id = ?;",
-
-        // Q20
-        "SELECT * FROM users u JOIN accounts a ON u.id = ?;",
-
-        // Q21
-        "SELECT * FROM users ORDER BY ?;",
-
-        // Q22
-        "SELECT COUNT(*) FROM users GROUP BY role HAVING COUNT(*) > ?;",
-
-        // Q23
-        "SELECT * FROM users WHERE id = SLEEP(?);",
-
-        // Q24
-        "SELECT username FROM users WHERE id = ? UNION SELECT email FROM admins;",
-
-        // Q25
-        "SELECT * FROM users WHERE id = ? OR username = 'admin';",
-
-        // Q26
-        "SELECT * FROM users WHERE id = 1;",
-    };
-
+        currentUser = authenticate(userName, password, users);
+        if (currentUser) {
+            loggedIn = true;
+            std::cout << "Logged in as " << currentUser->getName() << "\n";
+        } else {
+            std::cout << "Invalid username or password. Try again.\n";
+        }
+    }
     cout << "\n=== STARTING FINAL SECURITY & ACCESS CONTROL TESTS ===\n";
-    // CLIENT (Alleen Lezen)
-    runCheck(tableFile, queries, ROLE_CLIENT);
-
-    // EMPLOYEE (Lezen + Schrijven)
-    runCheck(tableFile, queries, ROLE_EMPLOYEE);
-
-    // ADMIN (Alles)
-    runCheck(tableFile, queries, ROLE_ADMIN);
-
+    // het uitvoeren van de queries, met de bijhorende user role
+    runCheck(tableFile, queries, currentUser->getRole());
     return 0;
 }

@@ -1,0 +1,19 @@
+{
+  "Users":[
+    {
+      "name": "TomHofkens",
+      "password": "1234",
+      "role": "ROLE_ADMIN"
+    },
+    {
+      "name": "ElsLanens",
+      "password": "4321",
+      "role": "ROLE_EMPLOYEE"
+    },
+    {
+      "name": "Jos",
+      "password": "Jos",
+      "role": "ROLE_CLIENT"
+    }
+  ]
+}
