@@ -76,6 +76,9 @@ void runCheck(const std::string& tableFile, const std::vector<std::string>& quer
     SecurityAnalyzer security;
     RBACManager rbac;
 
+
+    std::string short_roleName = rbac.getRoleName(role).substr(0,3);
+
     std::cout << "\n=======================================================" << std::endl;
     std::cout << "  USER ROLE: \033[1;36m" << rbac.getRoleName(role) << "\033[0m" << std::endl;
     std::cout << "=======================================================" << std::endl;
@@ -138,6 +141,7 @@ void runCheck(const std::string& tableFile, const std::vector<std::string>& quer
 
             std::cout << "\n>>> AST: \n";
             ast->print(2);
+            ast->doorlopen(ast, count - 1, short_roleName);
         } else {
             bool hadAlerts = !security.getLastFindings().empty();
 
