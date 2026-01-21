@@ -38,5 +38,29 @@ int main() {
     cout << "\n=== STARTING FINAL SECURITY & ACCESS CONTROL TESTS ===\n";
     // het uitvoeren van de queries, met de bijhorende user role
     runCheck(tableFile, queries, currentUser->getRole());
+
+
+
+
+
+    // genereren van png
+
+
+    for (const fs::directory_entry& entry : fs::directory_iterator("../dot")) {
+        fs::path p = entry.path();
+
+        if (p.extension() == ".dot") {
+            fs::path out = p;
+            out.replace_extension(".png");
+
+            std::string cmd =
+                    "/opt/local/bin/dot -Tpng \"" +
+                    p.string() +
+                    "\" -o \"" +
+                    out.string() + "\"";
+
+            system(cmd.c_str());
+        }
+    }
     return 0;
 }
