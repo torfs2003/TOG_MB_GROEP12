@@ -10,6 +10,7 @@
 #include "../lexer/Lexer.h"
 #include "../security/SecurityAnalyzer.h"
 #include "../security/TaintAnalyzer.h"
+#include "AuditLogger.h"
 
 // Maakt gebruik van FNV-1a hash functie (Fowler–Noll–Vo)
 uint64_t hashFile(const std::string& fileName) {
@@ -76,8 +77,9 @@ void runCheck(const std::string& tableFile, const std::vector<std::string>& quer
     SecurityAnalyzer security;
     RBACManager rbac;
 
-
-    std::string short_roleName = rbac.getRoleName(role).substr(0,3);
+    AuditLogger logger("../analysis.log");
+    std::string roleName = rbac.getRoleName(role);
+    std::string short_roleName = roleName.substr(0,3);
 
     std::cout << "\n=======================================================" << std::endl;
     std::cout << "  USER ROLE: \033[1;36m" << rbac.getRoleName(role) << "\033[0m" << std::endl;
@@ -85,6 +87,7 @@ void runCheck(const std::string& tableFile, const std::vector<std::string>& quer
 
     int count = 1;
     for (const std::string& q : queries) {
+        std::string queryId = roleName + "-" + std::to_string(count); // <<< 2) simpele ID
         std::cout << "\nQUERY " << count++ << ": " << q << std::endl;
         
         std::vector<Token> tokens = lexer.tokenize(q);
@@ -107,6 +110,7 @@ void runCheck(const std::string& tableFile, const std::vector<std::string>& quer
             if (hasCriticalTaint) {
                 std::cout << ">>> ACTION: \033[1;31mBLOCKED BY TAINT ANALYSIS (Critical Taint Flow)\033[0m" << std::endl;
                 std::cout << "-------------------------------------------------------" << std::endl;
+                logger.log(queryId, roleName, "BLOCKED", "TAINT", q);
                 continue;
             }
         }
@@ -115,12 +119,14 @@ void runCheck(const std::string& tableFile, const std::vector<std::string>& quer
         if (security.isDangerous(lexer, q, role)) {
             std::cout << ">>> ACTION: \033[1;31mBLOCKED BY FIREWALL (Security Violation)\033[0m" << std::endl;
             std::cout << "-------------------------------------------------------" << std::endl;
-            continue; 
+            logger.log(queryId, roleName, "BLOCKED", "FIREWALL", q);
+            continue;
         }
 
         // 2. RBAC Check (Mag deze rol dit commando uitvoeren?
         if (!rbac.hasPermission(role, tokens)) {
             std::cout << ">>> ACTION: \033[1;31mDENIED (INSUFFICIENT PRIVILEGES)\033[0m" << std::endl;
+            logger.log(queryId, roleName, "BLOCKED", "RBAC", q);
         }
 
         // 3. Syntax Check (Is het een valide query?)
@@ -140,6 +146,7 @@ void runCheck(const std::string& tableFile, const std::vector<std::string>& quer
             std::cout << "  Syntax Status:  VALID SQL" << std::endl;
 
             std::cout << "\n>>> AST: \n";
+            logger.log(queryId, roleName, "ALLOWED", "OK", q);
             ast->print(2);
             ast->doorlopen(ast, count - 1, short_roleName);
         } else {
@@ -154,6 +161,8 @@ void runCheck(const std::string& tableFile, const std::vector<std::string>& quer
                 std::cout << "  Security Status: CLEAN" << std::endl; 
             }
             std::cout << "  Syntax Status:  \033[1;31mINVALID SQL\033[0m" << std::endl;
+
+            logger.log(queryId, roleName, "BLOCKED", "SYNTAX_ERROR", q);
         }
     }
 }
