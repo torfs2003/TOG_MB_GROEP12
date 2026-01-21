@@ -1,0 +1,37 @@
+digraph AST9 {
+  node [shape=box];
+
+  n60 [label="opt_from_block"];
+
+
+  n61 [label="T_SELECT\n(SELECT)"];
+  n62 [label="clauses", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n63 [label="T_STAR\n(*)"];
+  n64 [label="T_FROM\n(FROM)"];
+  n65 [label="T_ID\n(users)"];
+  n66 [label="opt_where", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n67 [label="T_WHERE\n(WHERE)"];
+  n68 [label="C_Relational", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n69 [label="T_ID\n(id)"];
+  n70 [label="T_EQ\n(=)"];
+  n71 [label="T_PLACEHOLDER\n(?)", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n60 -> n61;
+  n60 -> n62;
+  n62 -> n63;
+  n62 -> n64;
+  n62 -> n65;
+  n62 -> n66;
+  n66 -> n67;
+  n66 -> n68;
+  n68 -> n69;
+  n68 -> n70;
+  n68 -> n71;
+}

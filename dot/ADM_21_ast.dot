@@ -1,0 +1,45 @@
+digraph AST21 {
+  node [shape=box];
+
+  n237 [label="clauses"];
+
+
+  n238 [label="T_SELECT\n(SELECT)"];
+  n239 [label="T_ID\n(table_name)"];
+  n240 [label="T_FROM\n(FROM)"];
+  n241 [label="opt_where"];
+
+
+  n242 [label="table_factor"];
+
+
+  n243 [label="T_ID\n(information_schema)"];
+  n244 [label="T_DOT\n(.)"];
+  n245 [label="T_ID\n(tables)"];
+  n246 [label="C_Relational"];
+
+
+  n247 [label="T_WHERE\n(WHERE)"];
+  n248 [label="T_ID\n(table_schema)"];
+  n249 [label="function_call"];
+
+
+  n250 [label="T_EQ\n(=)"];
+  n251 [label="T_ID\n(DATABASE)"];
+
+
+  n237 -> n238;
+  n237 -> n239;
+  n237 -> n240;
+  n237 -> n241;
+  n241 -> n242;
+  n241 -> n246;
+  n242 -> n243;
+  n242 -> n244;
+  n242 -> n245;
+  n246 -> n247;
+  n246 -> n248;
+  n246 -> n249;
+  n249 -> n250;
+  n249 -> n251;
+}

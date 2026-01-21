@@ -1,0 +1,31 @@
+digraph AST14 {
+  node [shape=box];
+
+  n147 [label="clauses"];
+
+
+  n148 [label="T_SELECT\n(SELECT)"];
+  n149 [label="T_STAR\n(*)"];
+  n150 [label="T_FROM\n(FROM)"];
+  n151 [label="opt_order", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n152 [label="T_ID\n(users)"];
+  n153 [label="T_ORDER\n(ORDER)"];
+  n154 [label="order_item", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n155 [label="T_BY\n(BY)"];
+  n156 [label="T_PLACEHOLDER\n(?)", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n147 -> n148;
+  n147 -> n149;
+  n147 -> n150;
+  n147 -> n151;
+  n151 -> n152;
+  n151 -> n153;
+  n151 -> n154;
+  n154 -> n155;
+  n154 -> n156;
+}

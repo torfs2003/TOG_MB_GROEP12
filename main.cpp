@@ -1,6 +1,7 @@
 #include "common.h"
 #include "utils/QueryRunner.h"
 #include "auth/User.h"
+#include <cstdlib>
 
 int main() {
     // Definieer de grammatica en parsetable bestanden
@@ -41,23 +42,62 @@ int main() {
 
 
     // genereren van png
+    std::cout << "\n=== GENERATING VISUALIZATIONS ===\n";
 
+    // 1. Bepaal het commando voor 'dot'
+    std::string dotCommand = "dot"; 
 
-    for (const fs::directory_entry& entry : fs::directory_iterator("../dot")) {
-        fs::path p = entry.path();
+    #ifdef _WIN32
+        std::string pathStandard = "C:\\Program Files\\Graphviz\\bin\\dot.exe";
+        std::string pathX86      = "C:\\Program Files (x86)\\Graphviz\\bin\\dot.exe";
 
-        if (p.extension() == ".dot") {
-            fs::path out = p;
-            out.replace_extension(".png");
-
-            std::string cmd =
-                    "/opt/local/bin/dot -Tpng \"" +
-                    p.string() +
-                    "\" -o \"" +
-                    out.string() + "\"";
-
-            system(cmd.c_str());
+        if (fs::exists(pathStandard)) {
+            // Quotes toevoegen voor het pad
+            dotCommand = "\"" + pathStandard + "\"";
+        } 
+        else if (fs::exists(pathX86)) {
+            dotCommand = "\"" + pathX86 + "\"";
         }
+    #endif
+
+    // 2. Controleren en uitvoeren
+    if (fs::exists("../dot")) {
+        int count = 0;
+        for (const auto& entry : fs::directory_iterator("../dot")) {
+            fs::path p = entry.path();
+
+            if (p.extension() == ".dot") {
+                fs::path out = p;
+                out.replace_extension(".png");
+
+                // Commando opbouwen
+                std::string args = " -Tpng \"" + p.string() + "\" -o \"" + out.string() + "\"";
+                std::string fullCmd = dotCommand + args;
+
+                #ifdef _WIN32
+                    // WINDOWS FIX: 
+                    // Als het pad spaties heeft én de argumenten quotes hebben,
+                    // moet je het HELE commando nog eens in extra quotes zetten voor system().
+                    // Dus: ""C:\Path..." -args"
+                    fullCmd = "\"" + fullCmd + "\"";
+                #endif
+
+                // DEBUG REGEL: Zie wat hij écht uitvoert
+                // std::cout << "DEBUG: " << fullCmd << "\n"; 
+
+                int result = system(fullCmd.c_str());
+
+                if (result == 0) {
+                    std::cout << " [OK] Generated: " << out.filename() << "\n";
+                } else {
+                    std::cerr << " [ERROR] Failed for " << p.filename() << "\n";
+                }
+                count++;
+            }
+        }
+        if (count == 0) std::cout << " [INFO] No .dot files found.\n";
+    } else {
+        std::cerr << "[Warning] Directory '../dot' not found.\n";
     }
     return 0;
 }

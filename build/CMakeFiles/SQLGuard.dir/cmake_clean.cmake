@@ -15,6 +15,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/SQLGuard.dir/security/SecurityAnalyzer.cpp.obj.d"
   "CMakeFiles/SQLGuard.dir/security/TaintAnalyzer.cpp.obj"
   "CMakeFiles/SQLGuard.dir/security/TaintAnalyzer.cpp.obj.d"
+  "CMakeFiles/SQLGuard.dir/utils/AuditLogger.cpp.obj"
+  "CMakeFiles/SQLGuard.dir/utils/AuditLogger.cpp.obj.d"
   "CMakeFiles/SQLGuard.dir/utils/QueryRunner.cpp.obj"
   "CMakeFiles/SQLGuard.dir/utils/QueryRunner.cpp.obj.d"
   "SQLGuard.exe"

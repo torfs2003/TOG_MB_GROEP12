@@ -1,0 +1,47 @@
+digraph AST5 {
+  node [shape=box];
+
+  n25 [label="statement"];
+
+
+  n26 [label="clauses"];
+
+
+  n27 [label="T_SELECT\n(SELECT)"];
+  n28 [label="T_ID\n(id)"];
+  n29 [label="T_FROM\n(FROM)"];
+  n30 [label="T_ID\n(users)"];
+  n31 [label="delete_statement"];
+
+
+  n32 [label="T_DELETE\n(DELETE)"];
+  n33 [label="T_FROM\n(FROM)"];
+  n34 [label="T_ID\n(accounts)"];
+  n35 [label="opt_where"];
+
+
+  n36 [label="T_WHERE\n(WHERE)"];
+  n37 [label="C_Relational"];
+
+
+  n38 [label="T_ID\n(balance)"];
+  n39 [label="T_EQ\n(=)"];
+  n40 [label="T_INT\n(0)"];
+
+
+  n25 -> n26;
+  n25 -> n31;
+  n26 -> n27;
+  n26 -> n28;
+  n26 -> n29;
+  n26 -> n30;
+  n31 -> n32;
+  n31 -> n33;
+  n31 -> n34;
+  n31 -> n35;
+  n35 -> n36;
+  n35 -> n37;
+  n37 -> n38;
+  n37 -> n39;
+  n37 -> n40;
+}

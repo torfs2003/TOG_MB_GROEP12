@@ -1,0 +1,53 @@
+digraph AST18 {
+  node [shape=box];
+
+  n195 [label="opt_from_block"];
+
+
+  n196 [label="T_SELECT\n(SELECT)"];
+  n197 [label="clauses", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n198 [label="T_STAR\n(*)"];
+  n199 [label="T_FROM\n(FROM)"];
+  n200 [label="T_ID\n(users)"];
+  n201 [label="opt_where", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n202 [label="T_WHERE\n(WHERE)"];
+  n203 [label="C_Expression", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n204 [label="C_Relational", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n205 [label="T_ID\n(id)"];
+  n206 [label="T_EQ\n(=)"];
+  n207 [label="T_PLACEHOLDER\n(?)", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+  n208 [label="T_OR\n(OR)"];
+  n209 [label="C_Relational"];
+
+
+  n210 [label="T_ID\n(username)"];
+  n211 [label="T_EQ\n(=)"];
+  n212 [label="T_STRING\n(admin)"];
+
+
+  n195 -> n196;
+  n195 -> n197;
+  n197 -> n198;
+  n197 -> n199;
+  n197 -> n200;
+  n197 -> n201;
+  n201 -> n202;
+  n201 -> n203;
+  n203 -> n204;
+  n203 -> n208;
+  n203 -> n209;
+  n204 -> n205;
+  n204 -> n206;
+  n204 -> n207;
+  n209 -> n210;
+  n209 -> n211;
+  n209 -> n212;
+}

@@ -52,5 +52,11 @@
   "command": "C:\\msys64\\mingw64\\bin\\g++.exe  @CMakeFiles/SQLGuard.dir/includes_CXX.rsp -g -std=gnu++20 -o CMakeFiles\\SQLGuard.dir\\auth\\User.cpp.obj -c \"C:\\Users\\lasse\\OneDrive - Thomas More\\Documenten\\UAntwerpen\\Machines_Berekenbaarheid\\TOG\\auth\\User.cpp\"",
   "file": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/auth/User.cpp",
   "output": "CMakeFiles/SQLGuard.dir/auth/User.cpp.obj"
+},
+{
+  "directory": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe  @CMakeFiles/SQLGuard.dir/includes_CXX.rsp -g -std=gnu++20 -o CMakeFiles\\SQLGuard.dir\\utils\\AuditLogger.cpp.obj -c \"C:\\Users\\lasse\\OneDrive - Thomas More\\Documenten\\UAntwerpen\\Machines_Berekenbaarheid\\TOG\\utils\\AuditLogger.cpp\"",
+  "file": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/utils/AuditLogger.cpp",
+  "output": "CMakeFiles/SQLGuard.dir/utils/AuditLogger.cpp.obj"
 }
 ]

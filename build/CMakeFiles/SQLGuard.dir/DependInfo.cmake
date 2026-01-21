@@ -16,6 +16,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/parser/LALRParser.cpp" "CMakeFiles/SQLGuard.dir/parser/LALRParser.cpp.obj" "gcc" "CMakeFiles/SQLGuard.dir/parser/LALRParser.cpp.obj.d"
   "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/security/SecurityAnalyzer.cpp" "CMakeFiles/SQLGuard.dir/security/SecurityAnalyzer.cpp.obj" "gcc" "CMakeFiles/SQLGuard.dir/security/SecurityAnalyzer.cpp.obj.d"
   "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/security/TaintAnalyzer.cpp" "CMakeFiles/SQLGuard.dir/security/TaintAnalyzer.cpp.obj" "gcc" "CMakeFiles/SQLGuard.dir/security/TaintAnalyzer.cpp.obj.d"
+  "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/utils/AuditLogger.cpp" "CMakeFiles/SQLGuard.dir/utils/AuditLogger.cpp.obj" "gcc" "CMakeFiles/SQLGuard.dir/utils/AuditLogger.cpp.obj.d"
   "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/utils/QueryRunner.cpp" "CMakeFiles/SQLGuard.dir/utils/QueryRunner.cpp.obj" "gcc" "CMakeFiles/SQLGuard.dir/utils/QueryRunner.cpp.obj.d"
   )
 

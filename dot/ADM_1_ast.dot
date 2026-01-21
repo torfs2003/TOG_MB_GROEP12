@@ -1,0 +1,71 @@
+digraph AST1 {
+  node [shape=box];
+
+  n0 [label="clauses"];
+
+
+  n1 [label="T_SELECT\n(SELECT)"];
+  n2 [label="column_list"];
+
+
+  n3 [label="T_ID\n(id)"];
+  n4 [label="col_item"];
+
+
+  n5 [label="case_expression"];
+
+
+  n6 [label="T_CASE\n(CASE)"];
+  n7 [label="case_when_list"];
+
+
+  n8 [label="T_WHEN\n(WHEN)"];
+  n9 [label="C_Relational"];
+
+
+  n10 [label="function_call"];
+
+
+  n11 [label="T_ID\n(LENGTH)"];
+  n12 [label="T_ID\n(username)"];
+  n13 [label="T_GT\n(>)"];
+  n14 [label="T_INT\n(5)"];
+  n15 [label="T_THEN\n(THEN)"];
+  n16 [label="T_STRING\n(LONG)"];
+  n17 [label="opt_else"];
+
+
+  n18 [label="T_ELSE\n(ELSE)"];
+  n19 [label="T_STRING\n(SHORT)"];
+  n20 [label="T_END\n(END)"];
+  n21 [label="T_AS\n(AS)"];
+  n22 [label="T_ID\n(name_type)"];
+  n23 [label="T_FROM\n(FROM)"];
+  n24 [label="T_ID\n(users)"];
+
+
+  n0 -> n1;
+  n0 -> n2;
+  n0 -> n23;
+  n0 -> n24;
+  n10 -> n11;
+  n10 -> n12;
+  n17 -> n18;
+  n17 -> n19;
+  n2 -> n3;
+  n2 -> n4;
+  n4 -> n5;
+  n4 -> n21;
+  n4 -> n22;
+  n5 -> n6;
+  n5 -> n7;
+  n5 -> n17;
+  n5 -> n20;
+  n7 -> n8;
+  n7 -> n9;
+  n7 -> n15;
+  n7 -> n16;
+  n9 -> n10;
+  n9 -> n13;
+  n9 -> n14;
+}

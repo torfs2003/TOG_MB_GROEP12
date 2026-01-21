@@ -333,6 +333,30 @@ security/TaintAnalyzer.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\SQLGuard.dir\build.make CMakeFiles/SQLGuard.dir/security/TaintAnalyzer.cpp.s
 .PHONY : security/TaintAnalyzer.cpp.s
 
+utils/AuditLogger.obj: utils/AuditLogger.cpp.obj
+.PHONY : utils/AuditLogger.obj
+
+# target to build an object file
+utils/AuditLogger.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\SQLGuard.dir\build.make CMakeFiles/SQLGuard.dir/utils/AuditLogger.cpp.obj
+.PHONY : utils/AuditLogger.cpp.obj
+
+utils/AuditLogger.i: utils/AuditLogger.cpp.i
+.PHONY : utils/AuditLogger.i
+
+# target to preprocess a source file
+utils/AuditLogger.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\SQLGuard.dir\build.make CMakeFiles/SQLGuard.dir/utils/AuditLogger.cpp.i
+.PHONY : utils/AuditLogger.cpp.i
+
+utils/AuditLogger.s: utils/AuditLogger.cpp.s
+.PHONY : utils/AuditLogger.s
+
+# target to generate assembly for a file
+utils/AuditLogger.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\SQLGuard.dir\build.make CMakeFiles/SQLGuard.dir/utils/AuditLogger.cpp.s
+.PHONY : utils/AuditLogger.cpp.s
+
 utils/QueryRunner.obj: utils/QueryRunner.cpp.obj
 .PHONY : utils/QueryRunner.obj
 
@@ -391,6 +415,9 @@ help:
 	@echo ... security/TaintAnalyzer.obj
 	@echo ... security/TaintAnalyzer.i
 	@echo ... security/TaintAnalyzer.s
+	@echo ... utils/AuditLogger.obj
+	@echo ... utils/AuditLogger.i
+	@echo ... utils/AuditLogger.s
 	@echo ... utils/QueryRunner.obj
 	@echo ... utils/QueryRunner.i
 	@echo ... utils/QueryRunner.s

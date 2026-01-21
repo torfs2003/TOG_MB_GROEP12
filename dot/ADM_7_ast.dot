@@ -1,0 +1,31 @@
+digraph AST7 {
+  node [shape=box];
+
+  n41 [label="alter_stmt"];
+
+
+  n42 [label="T_ALTER\n(ALTER)"];
+  n43 [label="alter_action"];
+
+
+  n44 [label="T_TABLE\n(TABLE)"];
+  n45 [label="T_ID\n(users)"];
+  n46 [label="T_ADD\n(ADD)"];
+  n47 [label="T_COLUMN\n(COLUMN)"];
+  n48 [label="data_type"];
+
+
+  n49 [label="T_ID\n(temp_id)"];
+  n50 [label="T_INT_TYPE\n(INT)"];
+
+
+  n41 -> n42;
+  n41 -> n43;
+  n43 -> n44;
+  n43 -> n45;
+  n43 -> n46;
+  n43 -> n47;
+  n43 -> n48;
+  n48 -> n49;
+  n48 -> n50;
+}

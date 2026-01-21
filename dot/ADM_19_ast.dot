@@ -1,0 +1,37 @@
+digraph AST19 {
+  node [shape=box];
+
+  n213 [label="opt_from_block"];
+
+
+  n214 [label="T_SELECT\n(SELECT)"];
+  n215 [label="clauses"];
+
+
+  n216 [label="T_STAR\n(*)"];
+  n217 [label="T_FROM\n(FROM)"];
+  n218 [label="T_ID\n(users)"];
+  n219 [label="opt_where"];
+
+
+  n220 [label="T_WHERE\n(WHERE)"];
+  n221 [label="C_Relational"];
+
+
+  n222 [label="T_ID\n(id)"];
+  n223 [label="T_EQ\n(=)"];
+  n224 [label="T_INT\n(1)"];
+
+
+  n213 -> n214;
+  n213 -> n215;
+  n215 -> n216;
+  n215 -> n217;
+  n215 -> n218;
+  n215 -> n219;
+  n219 -> n220;
+  n219 -> n221;
+  n221 -> n222;
+  n221 -> n223;
+  n221 -> n224;
+}

@@ -300,4 +300,5 @@ CMakeFiles/SQLGuard.dir/utils/QueryRunner.cpp.obj: \
  C:/Users/lasse/OneDrive\ -\ Thomas\ More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/lexer/Lexer.h \
  C:/Users/lasse/OneDrive\ -\ Thomas\ More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/auth/UserRole.h \
  C:/Users/lasse/OneDrive\ -\ Thomas\ More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/security/TaintAnalyzer.h \
- C:/Users/lasse/OneDrive\ -\ Thomas\ More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/core/AST.h
+ C:/Users/lasse/OneDrive\ -\ Thomas\ More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/core/AST.h \
+ C:\Users\lasse\OneDrive\ -\ Thomas\ More\Documenten\UAntwerpen\Machines_Berekenbaarheid\TOG\utils\AuditLogger.h

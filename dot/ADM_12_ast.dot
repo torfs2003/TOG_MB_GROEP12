@@ -1,0 +1,79 @@
+digraph AST12 {
+  node [shape=box];
+
+  n98 [label="clauses"];
+
+
+  n99 [label="col_item"];
+
+
+  n100 [label="select_query"];
+
+
+  n101 [label="T_SELECT\n(SELECT)"];
+  n102 [label="T_ID\n(id)"];
+  n103 [label="clauses"];
+
+
+  n104 [label="function_call"];
+
+
+  n105 [label="T_SELECT\n(SELECT)"];
+  n106 [label="T_MAX\n(MAX)"];
+  n107 [label="T_ID\n(balance)"];
+  n108 [label="T_FROM\n(FROM)"];
+  n109 [label="T_ID\n(accounts)"];
+  n110 [label="opt_where"];
+
+
+  n111 [label="T_WHERE\n(WHERE)"];
+  n112 [label="C_Relational"];
+
+
+  n113 [label="E_Primary"];
+
+
+  n114 [label="T_ID\n(accounts)"];
+  n115 [label="T_DOT\n(.)"];
+  n116 [label="T_ID\n(user_id)"];
+  n117 [label="T_EQ\n(=)"];
+  n118 [label="E_Primary"];
+
+
+  n119 [label="T_ID\n(users)"];
+  n120 [label="T_DOT\n(.)"];
+  n121 [label="T_ID\n(id)"];
+  n122 [label="T_AS\n(AS)"];
+  n123 [label="T_ID\n(max_balance)"];
+  n124 [label="T_FROM\n(FROM)"];
+  n125 [label="T_ID\n(users)"];
+
+
+  n100 -> n101;
+  n100 -> n102;
+  n100 -> n103;
+  n103 -> n104;
+  n103 -> n108;
+  n103 -> n109;
+  n103 -> n110;
+  n104 -> n105;
+  n104 -> n106;
+  n104 -> n107;
+  n110 -> n111;
+  n110 -> n112;
+  n112 -> n113;
+  n112 -> n117;
+  n112 -> n118;
+  n113 -> n114;
+  n113 -> n115;
+  n113 -> n116;
+  n118 -> n119;
+  n118 -> n120;
+  n118 -> n121;
+  n98 -> n99;
+  n98 -> n124;
+  n98 -> n125;
+  n99 -> n100;
+  n99 -> n122;
+  n99 -> n123;
+}

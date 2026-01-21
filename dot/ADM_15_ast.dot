@@ -1,0 +1,55 @@
+digraph AST15 {
+  node [shape=box];
+
+  n157 [label="clauses"];
+
+
+  n158 [label="function_call"];
+
+
+  n159 [label="T_SELECT\n(SELECT)"];
+  n160 [label="T_COUNT\n(COUNT)"];
+  n161 [label="T_STAR\n(*)"];
+  n162 [label="T_FROM\n(FROM)"];
+  n163 [label="T_ID\n(users)"];
+  n164 [label="opt_having", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n165 [label="opt_group"];
+
+
+  n166 [label="T_GROUP\n(GROUP)"];
+  n167 [label="T_BY\n(BY)"];
+  n168 [label="T_ID\n(role)"];
+  n169 [label="C_Relational", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n170 [label="function_call"];
+
+
+  n171 [label="T_HAVING\n(HAVING)"];
+  n172 [label="T_COUNT\n(COUNT)"];
+  n173 [label="T_STAR\n(*)"];
+  n174 [label="T_GT\n(>)"];
+  n175 [label="T_PLACEHOLDER\n(?)", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n157 -> n158;
+  n157 -> n162;
+  n157 -> n163;
+  n157 -> n164;
+  n158 -> n159;
+  n158 -> n160;
+  n158 -> n161;
+  n164 -> n165;
+  n164 -> n169;
+  n165 -> n166;
+  n165 -> n167;
+  n165 -> n168;
+  n169 -> n170;
+  n169 -> n174;
+  n169 -> n175;
+  n170 -> n171;
+  n170 -> n172;
+  n170 -> n173;
+}

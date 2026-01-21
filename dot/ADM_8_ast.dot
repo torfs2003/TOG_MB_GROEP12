@@ -1,0 +1,29 @@
+digraph AST8 {
+  node [shape=box];
+
+  n51 [label="opt_from_block"];
+
+
+  n52 [label="T_SELECT\n(SELECT)"];
+  n53 [label="clauses"];
+
+
+  n54 [label="T_ID\n(id)"];
+  n55 [label="opt_into"];
+
+
+  n56 [label="T_INTO\n(INTO)"];
+  n57 [label="T_HEX\n(0x4D795461626C65)"];
+  n58 [label="T_FROM\n(FROM)"];
+  n59 [label="T_ID\n(accounts)"];
+
+
+  n51 -> n52;
+  n51 -> n53;
+  n53 -> n54;
+  n53 -> n55;
+  n53 -> n58;
+  n53 -> n59;
+  n55 -> n56;
+  n55 -> n57;
+}

@@ -1,0 +1,61 @@
+digraph AST13 {
+  node [shape=box];
+
+  n126 [label="clauses"];
+
+
+  n127 [label="T_SELECT\n(SELECT)"];
+  n128 [label="T_STAR\n(*)"];
+  n129 [label="T_FROM\n(FROM)"];
+  n130 [label="table_ref", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n131 [label="table_factor"];
+
+
+  n132 [label="T_ID\n(users)"];
+  n133 [label="T_ID\n(u)"];
+  n134 [label="T_JOIN\n(JOIN)"];
+  n135 [label="table_factor"];
+
+
+  n136 [label="T_ID\n(accounts)"];
+  n137 [label="T_ID\n(a)"];
+  n138 [label="join_condition", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n139 [label="T_ON\n(ON)"];
+  n140 [label="C_Relational", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n141 [label="E_Primary"];
+
+
+  n142 [label="T_ID\n(u)"];
+  n143 [label="T_DOT\n(.)"];
+  n144 [label="T_ID\n(id)"];
+  n145 [label="T_EQ\n(=)"];
+  n146 [label="T_PLACEHOLDER\n(?)", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n126 -> n127;
+  n126 -> n128;
+  n126 -> n129;
+  n126 -> n130;
+  n130 -> n131;
+  n130 -> n134;
+  n130 -> n135;
+  n130 -> n138;
+  n131 -> n132;
+  n131 -> n133;
+  n135 -> n136;
+  n135 -> n137;
+  n138 -> n139;
+  n138 -> n140;
+  n140 -> n141;
+  n140 -> n145;
+  n140 -> n146;
+  n141 -> n142;
+  n141 -> n143;
+  n141 -> n144;
+}

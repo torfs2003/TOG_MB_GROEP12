@@ -1,0 +1,35 @@
+digraph AST20 {
+  node [shape=box];
+
+  n225 [label="opt_from_block"];
+
+
+  n226 [label="clauses"];
+
+
+  n227 [label="T_SELECT\n(SELECT)"];
+  n228 [label="T_ID\n(username)"];
+  n229 [label="T_FROM\n(FROM)"];
+  n230 [label="T_ID\n(users)"];
+  n231 [label="T_UNION\n(UNION)"];
+  n232 [label="clauses"];
+
+
+  n233 [label="T_SELECT\n(SELECT)"];
+  n234 [label="T_ID\n(email)"];
+  n235 [label="T_FROM\n(FROM)"];
+  n236 [label="T_ID\n(admins)"];
+
+
+  n225 -> n226;
+  n225 -> n231;
+  n225 -> n232;
+  n226 -> n227;
+  n226 -> n228;
+  n226 -> n229;
+  n226 -> n230;
+  n232 -> n233;
+  n232 -> n234;
+  n232 -> n235;
+  n232 -> n236;
+}

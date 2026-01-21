@@ -1,0 +1,55 @@
+digraph AST17 {
+  node [shape=box];
+
+  n176 [label="opt_from_block"];
+
+
+  n177 [label="opt_from_block", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n178 [label="T_SELECT\n(SELECT)"];
+  n179 [label="clauses", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n180 [label="T_ID\n(username)"];
+  n181 [label="T_FROM\n(FROM)"];
+  n182 [label="T_ID\n(users)"];
+  n183 [label="opt_where", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n184 [label="T_WHERE\n(WHERE)"];
+  n185 [label="C_Relational", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+
+
+  n186 [label="T_ID\n(id)"];
+  n187 [label="T_EQ\n(=)"];
+  n188 [label="T_PLACEHOLDER\n(?)", color=red, fontcolor=red, style=filled, fillcolor=mistyrose];
+  n189 [label="T_UNION\n(UNION)"];
+  n190 [label="clauses"];
+
+
+  n191 [label="T_SELECT\n(SELECT)"];
+  n192 [label="T_ID\n(email)"];
+  n193 [label="T_FROM\n(FROM)"];
+  n194 [label="T_ID\n(admins)"];
+
+
+  n176 -> n177;
+  n176 -> n189;
+  n176 -> n190;
+  n177 -> n178;
+  n177 -> n179;
+  n179 -> n180;
+  n179 -> n181;
+  n179 -> n182;
+  n179 -> n183;
+  n183 -> n184;
+  n183 -> n185;
+  n185 -> n186;
+  n185 -> n187;
+  n185 -> n188;
+  n190 -> n191;
+  n190 -> n192;
+  n190 -> n193;
+  n190 -> n194;
+}

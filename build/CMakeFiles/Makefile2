@@ -87,12 +87,12 @@ clean: CMakeFiles/copy_resources.dir/clean
 CMakeFiles/SQLGuard.dir/all: CMakeFiles/copy_resources.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\SQLGuard.dir\build.make CMakeFiles/SQLGuard.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\SQLGuard.dir\build.make CMakeFiles/SQLGuard.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="C:\Users\lasse\OneDrive - Thomas More\Documenten\UAntwerpen\Machines_Berekenbaarheid\TOG\build\CMakeFiles" --progress-num=1,2,3,4,5,6,7,8,9,10 "Built target SQLGuard"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="C:\Users\lasse\OneDrive - Thomas More\Documenten\UAntwerpen\Machines_Berekenbaarheid\TOG\build\CMakeFiles" --progress-num=1,2,3,4,5,6,7,8,9,10,11 "Built target SQLGuard"
 .PHONY : CMakeFiles/SQLGuard.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/SQLGuard.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start "C:\Users\lasse\OneDrive - Thomas More\Documenten\UAntwerpen\Machines_Berekenbaarheid\TOG\build\CMakeFiles" 10
+	$(CMAKE_COMMAND) -E cmake_progress_start "C:\Users\lasse\OneDrive - Thomas More\Documenten\UAntwerpen\Machines_Berekenbaarheid\TOG\build\CMakeFiles" 11
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 CMakeFiles/SQLGuard.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start "C:\Users\lasse\OneDrive - Thomas More\Documenten\UAntwerpen\Machines_Berekenbaarheid\TOG\build\CMakeFiles" 0
 .PHONY : CMakeFiles/SQLGuard.dir/rule
