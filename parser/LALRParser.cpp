@@ -1,8 +1,5 @@
 #include "LALRParser.h"
 
-#include <fstream>
-#include <iostream>
-#include <stack>
 #include "../common.h"
 
 LALRParser::LALRParser(std::string filename) {

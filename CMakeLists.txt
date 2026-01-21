@@ -30,10 +30,12 @@ add_executable(SQLGuard
         auth/User.h
 
 )
+target_include_directories(SQLGuard PRIVATE ${CMAKE_SOURCE_DIR})
 
-add_custom_target(copy_query_file ALL
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_SOURCE_DIR}/CFG.json ${CMAKE_BINARY_DIR}/CFG.json
+add_custom_target(copy_resources ALL
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/CFG.json ${CMAKE_BINARY_DIR}/CFG.json
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/user.json ${CMAKE_BINARY_DIR}/user.json
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/query.json ${CMAKE_BINARY_DIR}/query.json
 )
 
-add_dependencies(SQLGuard copy_query_file)
+add_dependencies(SQLGuard copy_resources)

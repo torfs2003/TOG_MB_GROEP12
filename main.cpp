@@ -40,9 +40,6 @@ int main() {
     runCheck(tableFile, queries, currentUser->getRole());
 
 
-
-
-
     // genereren van png
 
 

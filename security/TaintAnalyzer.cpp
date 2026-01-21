@@ -1,5 +1,5 @@
 #include "TaintAnalyzer.h"
-#include <iostream>
+#include "../common.h"
 
 void TaintAnalyzer::markTaintSources(ASTNode* node) {
     if (!node) return;

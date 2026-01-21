@@ -292,6 +292,7 @@ CMakeFiles/SQLGuard.dir/utils/QueryRunner.cpp.obj: \
  C:/Users/lasse/OneDrive\ -\ Thomas\ More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/core/Token.h \
  C:/Users/lasse/OneDrive\ -\ Thomas\ More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/core/AST.h \
  C:/Users/lasse/OneDrive\ -\ Thomas\ More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/core/Token.h \
+ C:/Users/lasse/OneDrive\ -\ Thomas\ More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/core/DotGlobals.h \
  C:/Users/lasse/OneDrive\ -\ Thomas\ More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/lexer/Lexer.h \
  C:/Users/lasse/OneDrive\ -\ Thomas\ More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/core/Token.h \
  C:/Users/lasse/OneDrive\ -\ Thomas\ More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/security/SecurityAnalyzer.h \

@@ -1,5 +1,5 @@
 #include "SecurityAnalyzer.h"
-#include "common.h"
+#include "../common.h"
 
 // Hulpfunctie om string naar uppercase te converteren
 std::string toUpper(const std::string& str) {

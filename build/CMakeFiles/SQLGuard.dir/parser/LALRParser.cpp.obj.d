@@ -170,16 +170,16 @@ CMakeFiles/SQLGuard.dir/parser/LALRParser.cpp.obj: \
  C:/msys64/mingw64/include/c++/15.2.0/istream \
  C:/msys64/mingw64/include/c++/15.2.0/bits/istream.tcc \
  C:/Users/lasse/OneDrive\ -\ Thomas\ More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/core/Token.h \
+ C:/msys64/mingw64/include/c++/15.2.0/map \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/stl_tree.h \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/stl_map.h \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/stl_multimap.h \
+ C:/Users/lasse/OneDrive\ -\ Thomas\ More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/core/DotGlobals.h \
  C:/msys64/mingw64/include/c++/15.2.0/fstream \
  C:/msys64/mingw64/include/c++/15.2.0/bits/codecvt.h \
  C:/msys64/mingw64/include/c++/15.2.0/x86_64-w64-mingw32/bits/basic_file.h \
  C:/msys64/mingw64/include/c++/15.2.0/x86_64-w64-mingw32/bits/c++io.h \
  C:/msys64/mingw64/include/c++/15.2.0/bits/fstream.tcc \
- C:/msys64/mingw64/include/c++/15.2.0/stack \
- C:/msys64/mingw64/include/c++/15.2.0/deque \
- C:/msys64/mingw64/include/c++/15.2.0/bits/stl_deque.h \
- C:/msys64/mingw64/include/c++/15.2.0/bits/deque.tcc \
- C:/msys64/mingw64/include/c++/15.2.0/bits/stl_stack.h \
  C:/Users/lasse/OneDrive\ -\ Thomas\ More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/common.h \
  C:/msys64/mingw64/include/c++/15.2.0/sstream \
  C:/msys64/mingw64/include/c++/15.2.0/bits/sstream.tcc \
@@ -204,10 +204,11 @@ CMakeFiles/SQLGuard.dir/parser/LALRParser.cpp.obj: \
  C:/msys64/mingw64/include/c++/15.2.0/bits/quoted_string.h \
  C:/msys64/mingw64/include/c++/15.2.0/unordered_set \
  C:/msys64/mingw64/include/c++/15.2.0/bits/unordered_set.h \
- C:/msys64/mingw64/include/c++/15.2.0/map \
- C:/msys64/mingw64/include/c++/15.2.0/bits/stl_tree.h \
- C:/msys64/mingw64/include/c++/15.2.0/bits/stl_map.h \
- C:/msys64/mingw64/include/c++/15.2.0/bits/stl_multimap.h \
+ C:/msys64/mingw64/include/c++/15.2.0/stack \
+ C:/msys64/mingw64/include/c++/15.2.0/deque \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/stl_deque.h \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/deque.tcc \
+ C:/msys64/mingw64/include/c++/15.2.0/bits/stl_stack.h \
  C:/msys64/mingw64/include/c++/15.2.0/set \
  C:/msys64/mingw64/include/c++/15.2.0/bits/stl_set.h \
  C:/msys64/mingw64/include/c++/15.2.0/bits/stl_multiset.h \

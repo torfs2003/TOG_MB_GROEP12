@@ -1,8 +1,6 @@
 #include "Lexer.h"
-
-#include <algorithm>
-
 #include "Keywords.h"
+#include "../common.h"
 
 SimpleLexer::SimpleLexer() : keywords(SQL_KEYWORDS), symbols(SQL_SYMBOLS) {}
 

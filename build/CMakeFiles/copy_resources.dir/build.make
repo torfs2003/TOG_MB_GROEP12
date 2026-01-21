@@ -66,10 +66,9 @@ include CMakeFiles/copy_resources.dir/compiler_depend.make
 include CMakeFiles/copy_resources.dir/progress.make
 
 CMakeFiles/copy_resources:
-	"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/CFG.json" "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build/CFG.json"
-	"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/user.json" "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build/user.json"
-	"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/query.json" "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build/query.json"
-	"C:\Program Files\CMake\bin\cmake.exe" -E copy_if_different "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/parsetable.json" "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build/parsetable.json"
+	"C:\Program Files\CMake\bin\cmake.exe" -E copy "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/CFG.json" "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build/CFG.json"
+	"C:\Program Files\CMake\bin\cmake.exe" -E copy "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/user.json" "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build/user.json"
+	"C:\Program Files\CMake\bin\cmake.exe" -E copy "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/query.json" "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build/query.json"
 
 CMakeFiles/copy_resources.dir/codegen:
 .PHONY : CMakeFiles/copy_resources.dir/codegen
