@@ -1,7 +1,12 @@
 #include "SecurityAnalyzer.h"
+#include "common.h"
 
-#include <algorithm>
-#include <iostream>
+// Hulpfunctie om string naar uppercase te converteren
+std::string toUpper(const std::string& str) {
+    std::string upper = str;
+    std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
+    return upper;
+}
 
 bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRole role) {
     std::cout << "    [Security Scan] Scanning for attack patterns (Context-Aware)..." << std::endl;
@@ -40,14 +45,6 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRo
     }
 
 
-    // 2. System schema toegang
-    std::string qUpper = query;
-    transform(qUpper.begin(), qUpper.end(), qUpper.begin(), ::toupper);
-    if (qUpper.find("INFORMATION_SCHEMA") != std::string::npos ||
-        qUpper.find("PG_CATALOG") != std::string::npos) {
-        addFinding(SEV_HIGH_RISK, "System schema access detected. Possible enumeration.");
-    }
-
     // 3. Multi-statement detectie
     size_t firstSemicolon = query.find(";");
     size_t secondSemicolon = (firstSemicolon != std::string::npos) ? query.find(";", firstSemicolon + 1) : std::string::npos;
@@ -66,15 +63,33 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRo
         updateContext(tokens[i].type);
         std::string type = tokens[i].type;
         std::string value = tokens[i].value;
+        std::string upperVal = toUpper(value);
 
         bool isHex = type == "T_HEX" || (value.size() > 2 && (value.substr(0,2) == "0x" || value.substr(0,2) == "0X"));
 
+        if (type == "T_ID" || type == "T_STRING") { 
+            if (upperVal.find("INFORMATION_SCHEMA") != std::string::npos || 
+                upperVal.find("PG_CATALOG") != std::string::npos) {
+                addFinding(SEV_HIGH_RISK, "System schema access detected (" + value + "). Possible enumeration.");
+            }
+        }
 
         // SELECT INTO detectie
         if (type == "T_INTO") {
-            std::string firstCmd = tokens.front().type;
-            if (firstCmd == "T_LPAREN" && tokens.size() > 1) firstCmd = tokens[1].type;
-            if (firstCmd == "T_SELECT" || firstCmd == "T_WITH") {
+            bool isSelectInto = false;
+            // Loop terug om de start van de statement te vinden
+            for (int k = i - 1; k >= 0; k--) {
+                if (tokens[k].type == "T_SELECT") {
+                    isSelectInto = true;
+                    break;
+                }
+                if (tokens[k].type == "T_INSERT" || tokens[k].type == "T_UPDATE" || tokens[k].type == "T_DELETE") {
+                    break; // Het is een INSERT INTO, dat is normaal
+                }
+                if (tokens[k].value == ";") break; // Einde vorige query
+            }
+
+            if (isSelectInto) {
                 if (role == ROLE_ADMIN) {
                     addFinding(SEV_LOW_SUSPICIOUS, "'SELECT INTO' detected. Allowed for ADMIN.");
                 } else {
@@ -137,81 +152,140 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRo
         }
 
         // tautologie detectie: OR gevolgd door tautologie patronen
-        if (type == "T_OR" && ctx == SqlContext::WHERE && i + 1 < tokens.size()) {
-            std::string nextType = tokens[i+1].type;
-            std::string nextVal = tokens[i+1].value;
-            std::string nextUpper = nextVal;
-            transform(nextUpper.begin(), nextUpper.end(), nextUpper.begin(), ::toupper);
+        if (type == "T_OR" && ctx == SqlContext::WHERE) {
+            int offset = 1;
+            while (i + offset < tokens.size() && tokens[i + offset].type == "T_LPAREN") {
+                offset++;
+            }
+
+            if (i + offset >= tokens.size()) {
+                addFinding(SEV_CRITICAL_HARD_BLOCK, "Dangling OR detected (Incomplete Query).");
+                continue; 
+            }
+
+            Token tLeft = tokens[i + offset];
+            std::string typeLeft = tLeft.type;
+            std::string valLeft = tLeft.value;
+            std::string upperLeft = toUpper(valLeft);
 
             bool tautologyFound = false;
+            
+            bool isLiteral = (typeLeft == "T_INT" || typeLeft == "T_STRING" || 
+                              typeLeft == "T_FLOAT" || typeLeft == "T_HEX");
 
-            // OR TRUE
-            if (nextUpper == "TRUE" || nextType == "T_BOOLEAN") {
+            if (isLiteral) {
+                addFinding(SEV_CRITICAL_HARD_BLOCK, 
+                    "Structural Violation: OR clause starts with Literal (" + valLeft + "). Expected Column Name.");
+                tautologyFound = true;
+            }
+            else if (typeLeft == "T_MINUS") {
+                addFinding(SEV_CRITICAL_HARD_BLOCK, "Suspicious arithmetic in OR clause (Negative value/Minus).");
+                tautologyFound = true;
+            }
+            else if (upperLeft == "TRUE" || typeLeft == "T_BOOLEAN") {
                 addFinding(SEV_CRITICAL_HARD_BLOCK, "Tautology: OR TRUE detected.");
                 tautologyFound = true;
             }
-            // OR niet-nul
-            else if (nextType == "T_INT" && nextVal != "0" &&
-                     (i + 2 >= tokens.size() ||
-                      (tokens[i+2].type != "T_EQ" && tokens[i+2].type != "T_LT" &&
-                       tokens[i+2].type != "T_GT" && tokens[i+2].type != "T_NEQ" &&
-                       tokens[i+2].type != "T_LTE" && tokens[i+2].type != "T_GTE"))) {
-                addFinding(SEV_CRITICAL_HARD_BLOCK, "Tautology: OR " + nextVal + " non-zero detected.");
+            else if (typeLeft == "T_CAST" || upperLeft == "CAST") {
+                addFinding(SEV_CRITICAL_HARD_BLOCK, "High Risk: CAST function detected inside OR clause.");
                 tautologyFound = true;
             }
-            // OR x=x, OR 1=1, OR 'a'='a', OR 1<2, ...
-            else if (i + 3 < tokens.size()) {
-                std::string t1 = tokens[i+1].type;
-                std::string t2 = tokens[i+2].type;
-                std::string t3 = tokens[i+3].type;
-                std::string v1 = tokens[i+1].value;
-                std::string v3 = tokens[i+3].value;
 
-                bool isComparison = (t2 == "T_EQ" || t2 == "T_LT" || t2 == "T_GT" ||
-                                     t2 == "T_LTE" || t2 == "T_GTE" || t2 == "T_NEQ");
+            else if (!tautologyFound && i + offset + 2 < tokens.size()) {
+                Token t1 = tokens[i + offset];       // Links
+                Token op = tokens[i + offset + 1];   // Operator
+                Token t3 = tokens[i + offset + 2];   // Rechts
+
+                bool isComparison = (op.type == "T_EQ" || op.type == "T_LT" || op.type == "T_GT" ||
+                                     op.type == "T_LTE" || op.type == "T_GTE" || op.type == "T_NEQ");
 
                 if (isComparison) {
-                    // OR literal=literal (1=1, 'a'='a')
-                    if (t1 == t3 && v1 == v3 && (t1 == "T_INT" || t1 == "T_STRING" || t1 == "T_FLOAT")) {
-                        addFinding(SEV_CRITICAL_HARD_BLOCK,
-                            "Tautology: OR " + v1 + tokens[i+2].value + v3 + " (same literals)");
+                    std::string v1_clean = t1.value;
+                    std::string v3_clean = t3.value;
+                    
+                    if (v1_clean.size() >= 2 && (v1_clean.front() == '\'' || v1_clean.front() == '"')) 
+                        v1_clean = v1_clean.substr(1, v1_clean.size()-2);
+                    if (v3_clean.size() >= 2 && (v3_clean.front() == '\'' || v3_clean.front() == '"')) 
+                        v3_clean = v3_clean.substr(1, v3_clean.size()-2);
+
+                    // A. Check: OR id = id
+                    if (t1.type == "T_ID" && t3.type == "T_ID" && v1_clean == v3_clean) {
+                        addFinding(SEV_CRITICAL_HARD_BLOCK, 
+                            "Tautology: OR " + v1_clean + "=" + v3_clean + " (Same Identifier).");
                         tautologyFound = true;
                     }
-                    // OR id=id (zelfde identifier)
-                    else if (t1 == "T_ID" && t3 == "T_ID" && v1 == v3) {
-                        addFinding(SEV_CRITICAL_HARD_BLOCK,
-                            "Tautology: OR " + v1 + "=" + v3 + " (same identifier)");
+                    // B. Check: OR 'a' = 'a'
+                    else if (v1_clean == v3_clean && (t1.type == "T_INT" || t1.type == "T_STRING")) {
+                        addFinding(SEV_CRITICAL_HARD_BLOCK, 
+                            "Tautology: OR " + v1_clean + op.value + v3_clean + " (Same Literals).");
                         tautologyFound = true;
                     }
-                    // OR 1<2, OR 2>1 (altijd-true vergelijkingen)
-                    else if (t1 == "T_INT" && t3 == "T_INT") {
-                        int left = stoi(v1);
-                        int right = stoi(v3);
-                        bool alwaysTrue = false;
+                    // C. Check: Wiskundige Tautologie (1 < 2)
+                    else if (t1.type == "T_INT" && t3.type == "T_INT") {
+                        try {
+                            long left = stol(v1_clean);
+                            long right = stol(v3_clean);
+                            bool alwaysTrue = false;
+                            if (op.type == "T_LT" && left < right) alwaysTrue = true;
+                            else if (op.type == "T_GT" && left > right) alwaysTrue = true;
+                            else if (op.type == "T_LTE" && left <= right) alwaysTrue = true;
+                            else if (op.type == "T_GTE" && left >= right) alwaysTrue = true;
+                            else if (op.type == "T_NEQ" && left != right) alwaysTrue = true;
 
-                        if (t2 == "T_LT" && left < right) alwaysTrue = true;
-                        else if (t2 == "T_GT" && left > right) alwaysTrue = true;
-                        else if (t2 == "T_LTE" && left <= right) alwaysTrue = true;
-                        else if (t2 == "T_GTE" && left >= right) alwaysTrue = true;
-                        else if (t2 == "T_NEQ" && left != right) alwaysTrue = true;
-
-                        if (alwaysTrue) {
-                            addFinding(SEV_CRITICAL_HARD_BLOCK,
-                                "Tautology: OR " + v1 + tokens[i+2].value + v3 + " (always true)");
+                            if (alwaysTrue) {
+                                addFinding(SEV_CRITICAL_HARD_BLOCK, 
+                                    "Mathematical Tautology: OR " + v1_clean + op.value + v3_clean + " is always true.");
+                                tautologyFound = true;
+                            }
+                        } catch (...) { /* Ignore parse errors */ }
+                    }
+                    // D. Check: Logic Evasion
+                    if (!tautologyFound) {
+                        bool leftHasIdentifier = (t1.type == "T_ID");
+                        bool rightHasIdentifier = (t3.type == "T_ID");
+                        if (!leftHasIdentifier && !rightHasIdentifier) {
+                            addFinding(SEV_CRITICAL_HARD_BLOCK, 
+                                "Logic Evasion Detected: Comparison between constants without column reference.");
                             tautologyFound = true;
                         }
                     }
                 }
             }
-
-            // als geen specifieke tautologie gevonden werd, gewoon warning geven
             if (!tautologyFound) {
                 if (role == ROLE_CLIENT) {
-                    addFinding(SEV_HIGH_RISK, "OR operator in WHERE clause. Potential boolean-based SQLi.");
-                } else if (role == ROLE_EMPLOYEE) {
-                    addFinding(SEV_MEDIUM_PRIVILEGE, "OR operator in WHERE clause (Employee). Monitor for SQLi.");
+                    addFinding(SEV_CRITICAL_HARD_BLOCK, "OR operator strictly forbidden for Client.");
                 } else {
-                    addFinding(SEV_LOW_SUSPICIOUS, "OR operator in WHERE clause (Admin).");
+                    addFinding(SEV_LOW_SUSPICIOUS, "Admin OR usage logged.");
+                }
+            }
+        }
+
+        // TAUTOLOGIE DETECTIE: AND
+        if (type == "T_AND" && ctx == SqlContext::WHERE) {
+            int offset = 1;
+            while (i + offset < tokens.size() && tokens[i + offset].type == "T_LPAREN") {
+                offset++;
+            }
+            if (i + offset + 2 < tokens.size()) {
+                Token t1 = tokens[i + offset];
+                Token op = tokens[i + offset + 1];
+                Token t3 = tokens[i + offset + 2];
+                bool isComparison = (op.type == "T_EQ" || op.type == "T_LT" || op.type == "T_GT" ||
+                                     op.type == "T_LTE" || op.type == "T_GTE" || op.type == "T_NEQ");
+
+                if (isComparison) {
+                    bool t1IsLit = (t1.type == "T_INT" || t1.type == "T_STRING" || t1.type == "T_FLOAT" || t1.type == "T_HEX");
+                    bool t3IsLit = (t3.type == "T_INT" || t3.type == "T_STRING" || t3.type == "T_FLOAT" || t3.type == "T_HEX");
+                    if (t1IsLit && t3IsLit) {
+                        addFinding(SEV_CRITICAL_HARD_BLOCK, 
+                            "Blind SQL Injection Pattern: Literal comparison in AND clause (" + t1.value + op.value + t3.value + ").");
+                    }
+                    bool leftHasIdentifier = (t1.type == "T_ID");
+                    bool rightHasIdentifier = (t3.type == "T_ID");
+                    if (!leftHasIdentifier && !rightHasIdentifier) {
+                        addFinding(SEV_CRITICAL_HARD_BLOCK, 
+                            "Logic Evasion Detected: Comparison between constants/subqueries without column reference.");
+                    }
                 }
             }
         }
@@ -228,8 +302,6 @@ bool SecurityAnalyzer::isDangerous(SimpleLexer& lexer, std::string query, UserRo
 
         // System variables / fingerprinting
         if (type == "T_ID") {
-            std::string upperVal = value;
-            transform(upperVal.begin(), upperVal.end(), upperVal.begin(), ::toupper);
             if (value.size() >= 2 && value.substr(0,2) == "@@") {
                 addFinding(SEV_HIGH_RISK, "System variable access (" + value + ").");
             }
