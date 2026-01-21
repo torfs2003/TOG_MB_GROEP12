@@ -28,6 +28,9 @@ add_executable(SQLGuard
         core/AST.h
         auth/User.cpp
         auth/User.h
+        utils/AuditLogger.cpp
+        utils/AuditLogger.h
+
 
 )
 target_include_directories(SQLGuard PRIVATE ${CMAKE_SOURCE_DIR})
