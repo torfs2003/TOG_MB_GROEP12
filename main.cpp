@@ -76,7 +76,6 @@ int main() {
 
                     fullCmd = "\"" + fullCmd + "\"";
                 #endif
- 
 
                 int result = system(fullCmd.c_str());
 
