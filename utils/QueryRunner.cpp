@@ -79,7 +79,7 @@ void runCheck(const std::string& tableFile, const std::vector<std::string>& quer
 
     AuditLogger logger("../analysis.log");
     std::string roleName = rbac.getRoleName(role);
-    std::string short_roleName = roleName.substr(0,3);
+    std::string short_roleName = rbac.getRoleName(role).substr(0,3);
 
     std::cout << "\n=======================================================" << std::endl;
     std::cout << "  USER ROLE: \033[1;36m" << rbac.getRoleName(role) << "\033[0m" << std::endl;
