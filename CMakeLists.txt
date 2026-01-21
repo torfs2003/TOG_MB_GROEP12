@@ -20,6 +20,8 @@ add_executable(SQLGuard
         security/SecurityTypes.h
         security/TaintAnalyzer.cpp
         security/TaintAnalyzer.h
+        security/SchemaSensitiveDetector.cpp
+        security/SchemaSensitiveDetector.h
         auth/UserRole.h
         auth/RBACManager.cpp
         auth/RBACManager.h
