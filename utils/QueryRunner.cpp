@@ -10,6 +10,7 @@
 #include "../lexer/Lexer.h"
 #include "../security/SecurityAnalyzer.h"
 #include "../security/TaintAnalyzer.h"
+#include "../security/SchemaSensitiveDetector.h"
 #include "AuditLogger.h"
 
 // Maakt gebruik van FNV-1a hash functie (Fowler–Noll–Vo)
@@ -93,6 +94,8 @@ void runCheck(const std::string& tableFile, const std::vector<std::string>& quer
         std::vector<Token> tokens = lexer.tokenize(q);
 
         ASTNode* ast = parser.parse(tokens);
+
+        SchemaSensitiveDetector detector(ast);
         bool validSyntax = (ast != nullptr);
 
         TaintAnalyzer taintAnalyzer;
