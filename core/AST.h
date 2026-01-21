@@ -8,6 +8,9 @@
 #include <map>
 #include "DotGlobals.h"
 #include <fstream>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 using namespace std;
 
@@ -66,6 +69,10 @@ struct ASTNode {
 
 
     void doorlopen(ASTNode* node, int queryID, string rolname) const{
+
+        if (!fs::exists("../dot")) {
+            fs::create_directory("../dot");
+        }
 
 
         string fileName = "../dot/" + rolname + "_" + to_string(queryID) + "_ast.dot" ;
