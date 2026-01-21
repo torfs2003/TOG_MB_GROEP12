@@ -1,0 +1,56 @@
+[
+{
+  "directory": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe  @CMakeFiles/SQLGuard.dir/includes_CXX.rsp -g -std=gnu++20 -o CMakeFiles\\SQLGuard.dir\\main.cpp.obj -c \"C:\\Users\\lasse\\OneDrive - Thomas More\\Documenten\\UAntwerpen\\Machines_Berekenbaarheid\\TOG\\main.cpp\"",
+  "file": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/main.cpp",
+  "output": "CMakeFiles/SQLGuard.dir/main.cpp.obj"
+},
+{
+  "directory": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe  @CMakeFiles/SQLGuard.dir/includes_CXX.rsp -g -std=gnu++20 -o CMakeFiles\\SQLGuard.dir\\LALR.cpp.obj -c \"C:\\Users\\lasse\\OneDrive - Thomas More\\Documenten\\UAntwerpen\\Machines_Berekenbaarheid\\TOG\\LALR.cpp\"",
+  "file": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/LALR.cpp",
+  "output": "CMakeFiles/SQLGuard.dir/LALR.cpp.obj"
+},
+{
+  "directory": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe  @CMakeFiles/SQLGuard.dir/includes_CXX.rsp -g -std=gnu++20 -o CMakeFiles\\SQLGuard.dir\\lexer\\Lexer.cpp.obj -c \"C:\\Users\\lasse\\OneDrive - Thomas More\\Documenten\\UAntwerpen\\Machines_Berekenbaarheid\\TOG\\lexer\\Lexer.cpp\"",
+  "file": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/lexer/Lexer.cpp",
+  "output": "CMakeFiles/SQLGuard.dir/lexer/Lexer.cpp.obj"
+},
+{
+  "directory": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe  @CMakeFiles/SQLGuard.dir/includes_CXX.rsp -g -std=gnu++20 -o CMakeFiles\\SQLGuard.dir\\parser\\LALRParser.cpp.obj -c \"C:\\Users\\lasse\\OneDrive - Thomas More\\Documenten\\UAntwerpen\\Machines_Berekenbaarheid\\TOG\\parser\\LALRParser.cpp\"",
+  "file": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/parser/LALRParser.cpp",
+  "output": "CMakeFiles/SQLGuard.dir/parser/LALRParser.cpp.obj"
+},
+{
+  "directory": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe  @CMakeFiles/SQLGuard.dir/includes_CXX.rsp -g -std=gnu++20 -o CMakeFiles\\SQLGuard.dir\\security\\SecurityAnalyzer.cpp.obj -c \"C:\\Users\\lasse\\OneDrive - Thomas More\\Documenten\\UAntwerpen\\Machines_Berekenbaarheid\\TOG\\security\\SecurityAnalyzer.cpp\"",
+  "file": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/security/SecurityAnalyzer.cpp",
+  "output": "CMakeFiles/SQLGuard.dir/security/SecurityAnalyzer.cpp.obj"
+},
+{
+  "directory": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe  @CMakeFiles/SQLGuard.dir/includes_CXX.rsp -g -std=gnu++20 -o CMakeFiles\\SQLGuard.dir\\security\\TaintAnalyzer.cpp.obj -c \"C:\\Users\\lasse\\OneDrive - Thomas More\\Documenten\\UAntwerpen\\Machines_Berekenbaarheid\\TOG\\security\\TaintAnalyzer.cpp\"",
+  "file": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/security/TaintAnalyzer.cpp",
+  "output": "CMakeFiles/SQLGuard.dir/security/TaintAnalyzer.cpp.obj"
+},
+{
+  "directory": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe  @CMakeFiles/SQLGuard.dir/includes_CXX.rsp -g -std=gnu++20 -o CMakeFiles\\SQLGuard.dir\\auth\\RBACManager.cpp.obj -c \"C:\\Users\\lasse\\OneDrive - Thomas More\\Documenten\\UAntwerpen\\Machines_Berekenbaarheid\\TOG\\auth\\RBACManager.cpp\"",
+  "file": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/auth/RBACManager.cpp",
+  "output": "CMakeFiles/SQLGuard.dir/auth/RBACManager.cpp.obj"
+},
+{
+  "directory": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe  @CMakeFiles/SQLGuard.dir/includes_CXX.rsp -g -std=gnu++20 -o CMakeFiles\\SQLGuard.dir\\utils\\QueryRunner.cpp.obj -c \"C:\\Users\\lasse\\OneDrive - Thomas More\\Documenten\\UAntwerpen\\Machines_Berekenbaarheid\\TOG\\utils\\QueryRunner.cpp\"",
+  "file": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/utils/QueryRunner.cpp",
+  "output": "CMakeFiles/SQLGuard.dir/utils/QueryRunner.cpp.obj"
+},
+{
+  "directory": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe  @CMakeFiles/SQLGuard.dir/includes_CXX.rsp -g -std=gnu++20 -o CMakeFiles\\SQLGuard.dir\\auth\\User.cpp.obj -c \"C:\\Users\\lasse\\OneDrive - Thomas More\\Documenten\\UAntwerpen\\Machines_Berekenbaarheid\\TOG\\auth\\User.cpp\"",
+  "file": "C:/Users/lasse/OneDrive - Thomas More/Documenten/UAntwerpen/Machines_Berekenbaarheid/TOG/auth/User.cpp",
+  "output": "CMakeFiles/SQLGuard.dir/auth/User.cpp.obj"
+}
+]

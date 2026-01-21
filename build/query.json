@@ -1,0 +1,46 @@
+{
+  "Query": {
+    "--- NORMAL TRAFFIC (SHOULD PASS) ---": "",
+    "1": "SELECT * FROM products WHERE id = 5;",
+    "2": "SELECT name, price FROM items WHERE category = 'books' ORDER BY price DESC;",
+    "3": "INSERT INTO logs (user_id, action) VALUES (1, 'login');",
+    "4": "UPDATE users SET last_login = NOW() WHERE id = 101;",
+    
+    "--- TAUTOLOGY & LOGIC EVASION (THE NEW CODE) ---": "",
+    "5": "SELECT * FROM users WHERE id = 1 OR 1=1;",
+    "6": "SELECT * FROM users WHERE id = 1 OR (((1=1)));",
+    "7": "SELECT * FROM items WHERE id = 10 OR 'a'='a';",
+    "8": "SELECT * FROM items WHERE id = 10 OR id=id;",
+    "9": "SELECT * FROM users WHERE id = 1 OR 10 > 5;",
+    "10": "SELECT * FROM users WHERE id = 1 OR 5=5;",
+    "11": "SELECT * FROM users WHERE active = 1 OR TRUE;",
+    "12": "SELECT * FROM products WHERE id = 1 OR -1;",
+    "13": "SELECT * FROM data WHERE id = 1 OR CAST(1 AS INT);",
+    "14": "SELECT * FROM users WHERE id = 1 AND 1=1;",
+    
+    "--- BLIND SQLi & DOS ATTACKS (HARD BLOCKS) ---": "",
+    "15": "SELECT * FROM users WHERE id = 1; SELECT SLEEP(5);",
+    "16": "SELECT BENCHMARK(1000000,MD5('1'));",
+    "17": "SELECT * FROM users WHERE id = 1 WAITFOR DELAY '0:0:5';",
+    
+    "--- ADMIN PRIVILEGES (TEST AS ADMIN vs EMPLOYEE) ---": "",
+    "18": "DROP TABLE users;",
+    "19": "CREATE TABLE hack (id INT);",
+    "20": "SELECT * FROM users; UPDATE settings SET value=1;",
+    "21": "SELECT * INTO OUTFILE '/tmp/hack.txt' FROM users;",
+    "22": "SELECT * FROM users UNION SELECT password FROM admins;",
+    "23": "SELECT * FROM users WHERE name = 0x61646D696E;",
+    
+    "--- EVASION & SYSTEM INFO ---": "",
+    "24": "SELECT * FROM INFORMATION_SCHEMA.TABLES;",
+    "25": "SELECT table_name FROM info/**/rmation_schema.tables;",
+    "26": "SELECT @@VERSION;",
+    "27": "SELECT USER();",
+    "28": "SELECT * FROM products WHERE id = 1 /* comment bypass */ ;",
+    
+    "--- CLIENT RESTRICTIONS (TEST AS CUSTOMER) ---": "",
+    "29": "SELECT * FROM products WHERE (price & 1) = 1;",
+    "30": "WITH RECURSIVE cte AS (SELECT 1) SELECT * FROM cte;",
+    "31": "SELECT * FROM products WHERE id = 1 OR id = 2;"
+  }
+}
