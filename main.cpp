@@ -42,8 +42,6 @@ int main() {
 
 
     // genereren van png
-    std::cout << "\n=== GENERATING VISUALIZATIONS ===\n";
-
     std::string dotCommand = "dot"; 
 
     #ifdef _WIN32
@@ -61,6 +59,8 @@ int main() {
     // 2. Controleren en uitvoeren
     if (fs::exists("../dot")) {
         int count = 0;
+        int skipped = 0;
+        int errors = 0;
         for (const auto& entry : fs::directory_iterator("../dot")) {
             fs::path p = entry.path();
 
@@ -68,12 +68,16 @@ int main() {
                 fs::path out = p;
                 out.replace_extension(".png");
 
+                if (fs::exists(out)) {
+                    skipped++;
+                    continue;
+                }
+
                 // Commando opbouwen
                 std::string args = " -Tpng \"" + p.string() + "\" -o \"" + out.string() + "\"";
                 std::string fullCmd = dotCommand + args;
 
                 #ifdef _WIN32
-
                     fullCmd = "\"" + fullCmd + "\"";
                 #endif
 
@@ -81,11 +85,19 @@ int main() {
 
                 if (result != 0) {
                     std::cerr << " [ERROR] Failed for " << p.filename() << "\n";
+                    errors++;
                 }
                 count++;
             }
         }
-        if (count == 0) std::cout << " [INFO] No .dot files found.\n";
+        if (count == 0 && skipped == 0) {
+            std::cout << " [INFO] No .dot files found.\n";
+        } else {
+            std::cout << " [DONE] Processed images.\n";
+            std::cout << "   - Generated new: " << count << "\n";            
+            std::cout << "   - Skipped (existing): " << skipped << "\n";
+            if (errors > 0) std::cout << "   - Errors: " << errors << "\n";
+        } 
     } else {
         std::cerr << "[Warning] Directory '../dot' not found.\n";
     }
